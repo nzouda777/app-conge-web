@@ -10,6 +10,7 @@ import { SdagPage } from './pages/SdagPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
+import { AdminDecisionsPage } from './pages/admin/AdminDecisionsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // ADMIN has its own separate space — send it to /admin instead of the
@@ -92,6 +93,14 @@ export default function App() {
         element={
           <ProtectedRoute roles={['ADMIN']}>
             <AdminRequestsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/decisions"
+        element={
+          <ProtectedRoute roles={['ADMIN']}>
+            <AdminDecisionsPage />
           </ProtectedRoute>
         }
       />

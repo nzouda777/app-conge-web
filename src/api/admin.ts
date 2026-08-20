@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { AdminEmployee, AdminUser, EmployeeStatus, LeaveRequest, Paginated, Role } from '../types/api';
+import type {
+  AdminEmployee,
+  AdminUser,
+  AnnualLeaveDecision,
+  EmployeeStatus,
+  LeaveRequest,
+  Paginated,
+  Role,
+} from '../types/api';
 
 export interface CreateUserInput {
   employeeId?: string;
@@ -89,5 +97,22 @@ export async function purgeAllRequests() {
     '/admin/requests',
     { data: { confirm: true } },
   );
+  return data;
+}
+
+export async function listAnnualLeaveDecisions(year?: number) {
+  const { data } = await apiClient.get<AnnualLeaveDecision[]>('/admin/annual-leave-decisions', {
+    params: year ? { year } : {},
+  });
+  return data;
+}
+
+export async function upsertAnnualLeaveDecision(input: {
+  year: number;
+  category: EmployeeStatus;
+  number: string;
+  date: string;
+}) {
+  const { data } = await apiClient.put<AnnualLeaveDecision>('/admin/annual-leave-decisions', input);
   return data;
 }

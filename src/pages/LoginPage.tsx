@@ -34,18 +34,19 @@ export function LoginPage() {
         alignItems: 'center',
         justifyContent: 'center',
         bgcolor: '#f5f6fa',
+        p: 2,
       }}
     >
-      <Box sx={{ width: 400 }}>
+      <Box sx={{ width: '100%', maxWidth: 400 }}>
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Typography sx={{ fontSize: 10, color: '#5D6D7E', textTransform: 'uppercase', letterSpacing: 1 }}>
-            République du Cameroun
-          </Typography>
-          <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#1B4F72' }}>
-            Direction Générale du Budget
-          </Typography>
-          <Typography sx={{ fontSize: 13, color: '#5D6D7E', mt: 0.5 }}>
-            Gestion des Demandes du Personnel
+          <Box
+            component="img"
+            src="/logo-dgb-request.svg"
+            alt="DGB Request"
+            sx={{ height: 64, maxWidth: '100%', mb: 1 }}
+          />
+          <Typography sx={{ fontSize: 12, color: '#5D6D7E', mt: 0.5 }}>
+            Direction Générale du Budget — République du Cameroun
           </Typography>
         </Box>
         <Paper sx={{ p: 3.5, borderRadius: 2 }}>

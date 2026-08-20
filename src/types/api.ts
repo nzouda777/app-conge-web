@@ -191,3 +191,13 @@ export interface AdminUser {
   employeeId: string;
   employee: Employee;
 }
+
+export interface AnnualLeaveDecision {
+  id: string;
+  year: number;
+  category: EmployeeStatus;
+  number: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}

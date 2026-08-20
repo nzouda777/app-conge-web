@@ -204,7 +204,16 @@ export function RequestDetailPage() {
       </Button>
 
       <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 1.5,
+            mb: 2,
+          }}
+        >
           <Box>
             <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
               {request.reference ?? 'Brouillon (pas encore soumis)'}
@@ -217,12 +226,18 @@ export function RequestDetailPage() {
               {request.employee.firstName} {request.employee.lastName} · {request.employee.organizationUnit?.name}
             </Typography>
           </Box>
-          <Stack spacing={1} sx={{ alignItems: 'flex-end' }}>
+          <Stack spacing={1} sx={{ alignItems: { xs: 'flex-start', sm: 'flex-end' } }}>
             <StatusBadge status={request.status} />
             {rejectionComment && (
-              <Typography sx={{ fontSize: 12, color: '#C0392B', textAlign: 'right', maxWidth: 280 }}>
+              <Typography sx={{ fontSize: 12, color: '#C0392B', textAlign: { xs: 'left', sm: 'right' }, maxWidth: 280 }}>
                 {rejectionComment}
               </Typography>
+            )}
+            {latestObservation && (
+              <Box sx={{ maxWidth: 280, textAlign: { xs: 'left', sm: 'right' } }}>
+                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Observation de l'agent de traitement</Typography>
+                <Typography sx={{ fontSize: 12.5 }}>{latestObservation}</Typography>
+              </Box>
             )}
             {canDownloadDocument && (
               <Button
@@ -285,13 +300,6 @@ export function RequestDetailPage() {
           <Box sx={{ mb: 2 }}>
             <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Motif</Typography>
             <Typography sx={{ fontSize: 13 }}>{request.motif}</Typography>
-          </Box>
-        )}
-
-        {latestObservation && (
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Observation de l'agent de traitement</Typography>
-            <Typography sx={{ fontSize: 13 }}>{latestObservation}</Typography>
           </Box>
         )}
 
