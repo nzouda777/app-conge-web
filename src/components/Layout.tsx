@@ -78,18 +78,20 @@ export function Layout({ children }: { children: ReactNode }) {
       : [
           { label: 'Tableau de bord', icon: <DashboardIcon />, to: '/dashboard' },
           { label: 'Mes demandes', icon: <AssignmentIcon />, to: '/requests' },
-          { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new', roles: ['AGENT'] },
+          // Every DGB staff member — whatever their role — can file a request,
+          // so this stays unrestricted (the whole array is already non-ADMIN).
+          { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' },
           {
             label: 'Demandes à examiner',
             icon: <FactCheckIcon />,
             to: '/manager',
-            roles: ['RESPONSABLE_HIERARCHIQUE'],
+            roles: ['RESPONSABLE_HIERARCHIQUE', 'TEST_INTEGRAL'],
           },
           {
             label: 'Vue SDAG',
             icon: <GavelIcon />,
             to: '/sdag',
-            roles: ['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG'],
+            roles: ['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'TEST_INTEGRAL'],
           },
           { label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' },
         ];

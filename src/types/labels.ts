@@ -46,6 +46,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   SOUS_DIRECTEUR_SDAG: 'Sous-Directeur des Affaires Générales',
   AGENT_TRAITEMENT_SDAG: 'Agent de traitement SDAG',
   ADMIN: 'Administrateur',
+  TEST_INTEGRAL: 'Compte de test (intégral)',
 };
 
 export function formatDate(iso: string | null | undefined): string {

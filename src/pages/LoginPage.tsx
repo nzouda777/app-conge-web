@@ -46,7 +46,7 @@ export function LoginPage() {
             sx={{ height: 64, maxWidth: '100%', mb: 1 }}
           />
           <Typography sx={{ fontSize: 12, color: '#5D6D7E', mt: 0.5 }}>
-            Direction Générale du Budget — République du Cameroun
+            Ministère des Finances - Direction Générale du Budget
           </Typography>
         </Box>
         <Paper sx={{ p: 3.5, borderRadius: 2 }}>

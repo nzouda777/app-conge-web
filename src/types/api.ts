@@ -3,7 +3,8 @@ export type Role =
   | 'RESPONSABLE_HIERARCHIQUE'
   | 'SOUS_DIRECTEUR_SDAG'
   | 'AGENT_TRAITEMENT_SDAG'
-  | 'ADMIN';
+  | 'ADMIN'
+  | 'TEST_INTEGRAL';
 
 export type EmployeeStatus = 'CIVIL_SERVANT' | 'LABOUR_CODE';
 

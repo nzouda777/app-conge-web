@@ -64,7 +64,9 @@ export function RequestDetailPage() {
   const { data: employees } = useQuery({
     queryKey: ['employees', 'sdag-picker'],
     queryFn: () => listEmployees({ role: 'AGENT_TRAITEMENT_SDAG' }),
-    enabled: user?.role === 'SOUS_DIRECTEUR_SDAG' && request?.status === 'PENDING_ASSIGNMENT',
+    enabled:
+      (user?.role === 'SOUS_DIRECTEUR_SDAG' || user?.role === 'TEST_INTEGRAL') &&
+      request?.status === 'PENDING_ASSIGNMENT',
   });
 
   function invalidate() {
@@ -154,25 +156,34 @@ export function RequestDetailPage() {
     return <Typography sx={{ p: 2 }}>Chargement…</Typography>;
   }
 
+  // The test-only omni role satisfies every stage's role check on the front
+  // end too, so a single account walks the whole circuit. The ownership /
+  // status conditions still apply (self-manager, self-cotation), so the
+  // account only ever acts on its own request — real profiles are untouched.
+  const isTest = user?.role === 'TEST_INTEGRAL';
   const isOwner = request.employeeId === user?.employeeId;
   const canSubmit = isOwner && request.status === 'DRAFT';
   const canManagerReview =
-    user?.role === 'RESPONSABLE_HIERARCHIQUE' &&
+    (user?.role === 'RESPONSABLE_HIERARCHIQUE' || isTest) &&
     request.status === 'PENDING_MANAGER_REVIEW' &&
-    request.employee.managerId === user.employeeId;
-  const canAssign = user?.role === 'SOUS_DIRECTEUR_SDAG' && request.status === 'PENDING_ASSIGNMENT';
+    request.employee.managerId === user?.employeeId;
+  const canAssign =
+    (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) && request.status === 'PENDING_ASSIGNMENT';
   const canTreat =
-    user?.role === 'AGENT_TRAITEMENT_SDAG' &&
+    (user?.role === 'AGENT_TRAITEMENT_SDAG' || isTest) &&
     request.status === 'ASSIGNED' &&
-    request.currentAssigneeId === user.employeeId;
-  const canDecide = user?.role === 'SOUS_DIRECTEUR_SDAG' && request.status === 'RETURNED_TO_SDAG_DIRECTOR';
+    request.currentAssigneeId === user?.employeeId;
+  const canDecide =
+    (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) && request.status === 'RETURNED_TO_SDAG_DIRECTOR';
   // Mirrors DocumentsController's access rule: while the dossier is being
   // instructed (ASSIGNED / RETURNED_TO_SDAG_DIRECTOR), only the assigned
   // agent and the Sous-Directeur SDAG can consult the document — everyone
   // with view rights gets it once APPROVED.
-  const isAssignedAgent = user?.role === 'AGENT_TRAITEMENT_SDAG' && request.currentAssigneeId === user.employeeId;
-  const isDirector = user?.role === 'SOUS_DIRECTEUR_SDAG';
-  const isRequestManager = user?.role === 'RESPONSABLE_HIERARCHIQUE' && request.employee.managerId === user?.employeeId;
+  const isAssignedAgent =
+    (user?.role === 'AGENT_TRAITEMENT_SDAG' || isTest) && request.currentAssigneeId === user?.employeeId;
+  const isDirector = user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest;
+  const isRequestManager =
+    (user?.role === 'RESPONSABLE_HIERARCHIQUE' || isTest) && request.employee.managerId === user?.employeeId;
   const inProgressStage = request.status === 'ASSIGNED' || request.status === 'RETURNED_TO_SDAG_DIRECTOR';
   const isDecided = request.status === 'APPROVED' || request.status === 'REJECTED';
   const canDownloadDocument = inProgressStage
@@ -197,6 +208,21 @@ export function RequestDetailPage() {
   // nowhere at all.
   const latestObservation = request.sdagTreatments.at(-1)?.observation;
 
+  // Cotation picker options. A real Sous-Directeur sees exactly the SDAG
+  // treatment agents (unchanged). The test-only account additionally sees
+  // itself, so it can cote its own dossier to itself and then treat it —
+  // this extra entry is never shown to real profiles.
+  type AssigneeOption = { id: string; firstName: string; lastName: string; position: string };
+  const assigneeOptions: AssigneeOption[] = employees?.items ? [...employees.items] : [];
+  if (isTest && user?.employee && !assigneeOptions.some((e) => e.id === user.employeeId)) {
+    assigneeOptions.unshift({
+      id: user.employeeId,
+      firstName: user.employee.firstName,
+      lastName: user.employee.lastName,
+      position: user.employee.position,
+    });
+  }
+
   return (
     <Box sx={{ maxWidth: 900 }}>
       <Button onClick={() => navigate(-1)} size="small" sx={{ mb: 2 }}>
@@ -207,14 +233,14 @@ export function RequestDetailPage() {
         <Box
           sx={{
             display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
+            flexDirection: { xs: 'column', md: 'row' },
             alignItems: 'flex-start',
-            gap: 1.5,
-            mb: 2,
+            gap: { xs: 2, md: 3 },
           }}
         >
-          <Box>
+          {/* Colonne principale (gauche) : toutes les informations, remontées
+              pour occuper l'espace face à la colonne statut. */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
               {request.reference ?? 'Brouillon (pas encore soumis)'}
             </Typography>
@@ -225,16 +251,136 @@ export function RequestDetailPage() {
             <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
               {request.employee.firstName} {request.employee.lastName} · {request.employee.organizationUnit?.name}
             </Typography>
-          </Box>
-          <Stack spacing={1} sx={{ alignItems: { xs: 'flex-start', sm: 'flex-end' } }}>
-            <StatusBadge status={request.status} />
-            {rejectionComment && (
-              <Typography sx={{ fontSize: 12, color: '#C0392B', textAlign: { xs: 'left', sm: 'right' }, maxWidth: 280 }}>
-                {rejectionComment}
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mt: 2, mb: 2 }}>
+              {request.type === 'ATTESTATION_PRESENCE' ? (
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Référence de la note d'affectation</Typography>
+                  <Typography sx={{ fontSize: 14 }}>{request.motif}</Typography>
+                </Box>
+              ) : request.type === 'REPRISE_SERVICE' ? (
+                <Box>
+                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Date de reprise de service</Typography>
+                  <Typography sx={{ fontSize: 14 }}>{formatDate(request.startDate)}</Typography>
+                </Box>
+              ) : (
+                <>
+                  <Box>
+                    <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Du</Typography>
+                    <Typography sx={{ fontSize: 14 }}>{formatDate(request.startDate)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Au</Typography>
+                    <Typography sx={{ fontSize: 14 }}>{formatDate(request.endDate)}</Typography>
+                  </Box>
+                </>
+              )}
+              {request.calculatedDays !== null && request.calculatedDays > 0 && (
+                <Box>
+                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Durée calculée</Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#1B4F72' }}>
+                    {request.calculatedDays} jour(s)
+                  </Typography>
+                </Box>
+              )}
+              {request.interimEmployee && (
+                <Box>
+                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Intérimaire</Typography>
+                  <Typography sx={{ fontSize: 14 }}>
+                    {request.interimEmployee.firstName} {request.interimEmployee.lastName}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
+            {request.motif && request.type !== 'ATTESTATION_PRESENCE' && (
+              <Box sx={{ mb: 2 }}>
+                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Motif</Typography>
+                <Typography sx={{ fontSize: 13 }}>{request.motif}</Typography>
+              </Box>
+            )}
+
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72', mb: 1 }}>Pièces justificatives</Typography>
+            <Stack spacing={0.5} sx={{ mb: canSubmit || canTreat ? 1.5 : 0 }}>
+              {visibleAttachments.length === 0 && (
+                <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>Aucune pièce jointe.</Typography>
+              )}
+              {visibleAttachments.map((a) => (
+                <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <a
+                    href={attachmentDownloadUrl(request.id, a.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 13, color: '#2E86C1' }}
+                  >
+                    {a.originalName} ({Math.round(a.size / 1024)} Ko)
+                  </a>
+                  {canSubmit && (
+                    <IconButton
+                      size="small"
+                      color="error"
+                      disabled={deleteAttachmentMutation.isPending}
+                      onClick={() => deleteAttachmentMutation.mutate(a.id)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+            {(canSubmit || canTreat) && (
+              <Button
+                component="label"
+                size="small"
+                startIcon={<UploadFileIcon />}
+                variant="outlined"
+                disabled={uploadMutation.isPending}
+              >
+                Ajouter une pièce (PDF, JPG, PNG)
+                <input
+                  type="file"
+                  hidden
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadMutation.mutate(file);
+                    e.target.value = '';
+                  }}
+                />
+              </Button>
+            )}
+            {uploadMutation.isPending && (
+              <Box sx={{ maxWidth: 320, mt: 1 }}>
+                <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
+                <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                  Téléchargement… {uploadProgress ?? 0}%
+                </Typography>
+              </Box>
+            )}
+            {canTreat && (
+              <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                Téléchargez le dossier, traitez-le, puis déposez ici le fichier final avant de le retourner au
+                Sous-Directeur.
               </Typography>
             )}
+          </Box>
+
+          {/* Colonne statut / actions (droite). */}
+          <Stack
+            spacing={1}
+            sx={{
+              alignItems: { xs: 'flex-start', md: 'flex-end' },
+              flexShrink: 0,
+              width: { xs: '100%', md: 250 },
+              textAlign: { xs: 'left', md: 'right' },
+            }}
+          >
+            <StatusBadge status={request.status} />
+            {rejectionComment && (
+              <Typography sx={{ fontSize: 12, color: '#C0392B', textAlign: 'inherit' }}>{rejectionComment}</Typography>
+            )}
             {latestObservation && (
-              <Box sx={{ maxWidth: 280, textAlign: { xs: 'left', sm: 'right' } }}>
+              <Box sx={{ textAlign: 'inherit' }}>
                 <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Observation de l'agent de traitement</Typography>
                 <Typography sx={{ fontSize: 12.5 }}>{latestObservation}</Typography>
               </Box>
@@ -254,118 +400,6 @@ export function RequestDetailPage() {
             )}
           </Stack>
         </Box>
-
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 2, mb: 2 }}>
-          {request.type === 'ATTESTATION_PRESENCE' ? (
-            <Box sx={{ gridColumn: '1 / -1' }}>
-              <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Référence de la note d'affectation</Typography>
-              <Typography sx={{ fontSize: 14 }}>{request.motif}</Typography>
-            </Box>
-          ) : request.type === 'REPRISE_SERVICE' ? (
-            <Box>
-              <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Date de reprise de service</Typography>
-              <Typography sx={{ fontSize: 14 }}>{formatDate(request.startDate)}</Typography>
-            </Box>
-          ) : (
-            <>
-              <Box>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Du</Typography>
-                <Typography sx={{ fontSize: 14 }}>{formatDate(request.startDate)}</Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Au</Typography>
-                <Typography sx={{ fontSize: 14 }}>{formatDate(request.endDate)}</Typography>
-              </Box>
-            </>
-          )}
-          {request.calculatedDays !== null && request.calculatedDays > 0 && (
-            <Box>
-              <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Durée calculée</Typography>
-              <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#1B4F72' }}>
-                {request.calculatedDays} jour(s)
-              </Typography>
-            </Box>
-          )}
-          {request.interimEmployee && (
-            <Box>
-              <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Intérimaire</Typography>
-              <Typography sx={{ fontSize: 14 }}>
-                {request.interimEmployee.firstName} {request.interimEmployee.lastName}
-              </Typography>
-            </Box>
-          )}
-        </Box>
-
-        {request.motif && request.type !== 'ATTESTATION_PRESENCE' && (
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Motif</Typography>
-            <Typography sx={{ fontSize: 13 }}>{request.motif}</Typography>
-          </Box>
-        )}
-
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72', mb: 1 }}>Pièces justificatives</Typography>
-        <Stack spacing={0.5} sx={{ mb: canSubmit || canTreat ? 1.5 : 0 }}>
-          {visibleAttachments.length === 0 && (
-            <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>Aucune pièce jointe.</Typography>
-          )}
-          {visibleAttachments.map((a) => (
-            <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <a
-                href={attachmentDownloadUrl(request.id, a.id)}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: 13, color: '#2E86C1' }}
-              >
-                {a.originalName} ({Math.round(a.size / 1024)} Ko)
-              </a>
-              {canSubmit && (
-                <IconButton
-                  size="small"
-                  color="error"
-                  disabled={deleteAttachmentMutation.isPending}
-                  onClick={() => deleteAttachmentMutation.mutate(a.id)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              )}
-            </Box>
-          ))}
-        </Stack>
-        {(canSubmit || canTreat) && (
-          <Button
-            component="label"
-            size="small"
-            startIcon={<UploadFileIcon />}
-            variant="outlined"
-            disabled={uploadMutation.isPending}
-          >
-            Ajouter une pièce (PDF, JPG, PNG)
-            <input
-              type="file"
-              hidden
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) uploadMutation.mutate(file);
-                e.target.value = '';
-              }}
-            />
-          </Button>
-        )}
-        {uploadMutation.isPending && (
-          <Box sx={{ maxWidth: 320, mt: 1 }}>
-            <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
-            <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
-              Téléchargement… {uploadProgress ?? 0}%
-            </Typography>
-          </Box>
-        )}
-        {canTreat && (
-          <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
-            Téléchargez le dossier, traitez-le, puis déposez ici le fichier final avant de le retourner au
-            Sous-Directeur.
-          </Typography>
-        )}
       </Paper>
 
       {error && (
@@ -415,13 +449,13 @@ export function RequestDetailPage() {
                 onChange={(e) => setAssigneeId(e.target.value)}
                 sx={{ minWidth: 260 }}
               >
-                {!employees && <MenuItem value="">Chargement…</MenuItem>}
-                {employees?.items.length === 0 && (
+                {!employees && assigneeOptions.length === 0 && <MenuItem value="">Chargement…</MenuItem>}
+                {employees && assigneeOptions.length === 0 && (
                   <MenuItem value="" disabled>
                     Aucun agent de traitement SDAG actif
                   </MenuItem>
                 )}
-                {employees?.items.map((emp) => (
+                {assigneeOptions.map((emp) => (
                   <MenuItem key={emp.id} value={emp.id}>
                     {emp.firstName} {emp.lastName} — {emp.position}
                   </MenuItem>

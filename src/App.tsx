@@ -40,10 +40,19 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Any DGB staff member may file a request — every non-ADMIN role. */}
       <Route
         path="/requests/new"
         element={
-          <ProtectedRoute roles={['AGENT']}>
+          <ProtectedRoute
+            roles={[
+              'AGENT',
+              'RESPONSABLE_HIERARCHIQUE',
+              'SOUS_DIRECTEUR_SDAG',
+              'AGENT_TRAITEMENT_SDAG',
+              'TEST_INTEGRAL',
+            ]}
+          >
             <NewRequestPage />
           </ProtectedRoute>
         }
@@ -59,7 +68,7 @@ export default function App() {
       <Route
         path="/manager"
         element={
-          <ProtectedRoute roles={['RESPONSABLE_HIERARCHIQUE']}>
+          <ProtectedRoute roles={['RESPONSABLE_HIERARCHIQUE', 'TEST_INTEGRAL']}>
             <ManagerRequestsPage />
           </ProtectedRoute>
         }
@@ -67,7 +76,7 @@ export default function App() {
       <Route
         path="/sdag"
         element={
-          <ProtectedRoute roles={['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'ADMIN']}>
+          <ProtectedRoute roles={['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'ADMIN', 'TEST_INTEGRAL']}>
             <SdagPage />
           </ProtectedRoute>
         }
