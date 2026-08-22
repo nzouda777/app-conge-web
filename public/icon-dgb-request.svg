@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Icône DGB Request">
+  <title>DGB Request — icône</title>
+  <rect width="512" height="512" rx="114" fill="#22334A"/>
+  <g transform="translate(96,104) scale(6.4)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- document -->
+    <path d="M44 31V49a5 5 0 0 1-5 5H17a5 5 0 0 1-5-5V15a5 5 0 0 1 5-5h22a5 5 0 0 1 5 5v4" stroke="#FFFFFF" stroke-width="4.6"/>
+    <path d="M20 21h13M20 28.5h9" stroke="#9AA7B4" stroke-width="3.2"/>
+    <!-- pen (tricolore): green body, red band, gold nib -->
+    <path d="M33 34 L51 15.5" stroke="#3E9B6E" stroke-width="5.6"/>
+    <path d="M30 37 L33.2 33.8" stroke="#D23F44" stroke-width="5.6" stroke-linecap="butt"/>
+    <path d="M25.5 42.5 L32.4 39 L28.4 34.6 Z" fill="#E9B23A" stroke="none"/>
+  </g>
+</svg>

@@ -1,0 +1,115 @@
+import { useState } from 'react';
+import { Alert, Box, Button, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { getApiErrorMessage } from '../api/client';
+
+export function LoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [matricule, setMatricule] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const me = await login(matricule, password);
+      navigate(me.role === 'ADMIN' ? '/admin' : '/dashboard');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Matricule ou mot de passe incorrect.'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: '#f5f6fa',
+        p: 2,
+      }}
+    >
+      <Box sx={{ width: '100%', maxWidth: 400 }}>
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <Box
+            component="img"
+            src="/logo-dgb-request.svg"
+            alt="DGB Request"
+            sx={{ height: 64, maxWidth: '100%', mb: 1 }}
+          />
+          <Typography sx={{ fontSize: 12, color: '#5D6D7E', mt: 0.5 }}>
+            Ministère des Finances - Direction Générale du Budget
+          </Typography>
+        </Box>
+        <Paper sx={{ p: 3.5, borderRadius: 2 }}>
+          <Typography sx={{ fontSize: 15, fontWeight: 600, color: '#1B4F72', mb: 2.5 }}>Connexion</Typography>
+          <form onSubmit={handleSubmit}>
+            <TextField
+              label="Matricule"
+              type="text"
+              fullWidth
+              required
+              margin="normal"
+              size="small"
+              value={matricule}
+              onChange={(e) => setMatricule(e.target.value)}
+              placeholder="1149105B"
+            />
+            <TextField
+              label="Mot de passe"
+              type={showPassword ? 'text' : 'password'}
+              fullWidth
+              required
+              margin="normal"
+              size="small"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                        onClick={() => setShowPassword((v) => !v)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            {error && (
+              <Alert severity="error" sx={{ mt: 1.5 }}>
+                {error}
+              </Alert>
+            )}
+            <Button type="submit" variant="contained" fullWidth size="large" sx={{ mt: 2 }} disabled={loading}>
+              {loading ? 'Connexion…' : 'Se connecter'}
+            </Button>
+          </form>
+          <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 12, color: '#5D6D7E' }}>
+            Mot de passe oublié ? Contacter la SDAG
+          </Typography>
+        </Paper>
+        <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 11, color: '#95A5A6' }}>
+          Système sécurisé — Usage strictement réservé au personnel DGB
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
