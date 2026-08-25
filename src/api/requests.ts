@@ -9,6 +9,11 @@ export interface CreateRequestInput {
   motif?: string;
   interimEmployeeId?: string;
   relatedRequestId?: string;
+  repriseNoteNumber?: string;
+  repriseNoteDate?: string;
+  reprisePriorType?: string;
+  reprisePriorStartDate?: string;
+  reprisePriorEndDate?: string;
 }
 
 export async function createRequest(input: CreateRequestInput) {
