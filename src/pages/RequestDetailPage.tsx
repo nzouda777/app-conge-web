@@ -233,9 +233,9 @@ export function RequestDetailPage() {
         <Box
           sx={{
             display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
+            flexDirection: { xs: 'column', sm: 'row' },
             alignItems: 'flex-start',
-            gap: { xs: 2, md: 3 },
+            gap: { xs: 2, sm: 3 },
           }}
         >
           {/* Colonne principale (gauche) : toutes les informations, remontées
@@ -369,10 +369,10 @@ export function RequestDetailPage() {
           <Stack
             spacing={1}
             sx={{
-              alignItems: { xs: 'flex-start', md: 'flex-end' },
+              alignItems: { xs: 'flex-start', sm: 'flex-end' },
               flexShrink: 0,
-              width: { xs: '100%', md: 250 },
-              textAlign: { xs: 'left', md: 'right' },
+              width: { xs: '100%', sm: 250 },
+              textAlign: { xs: 'left', sm: 'right' },
             }}
           >
             <StatusBadge status={request.status} />

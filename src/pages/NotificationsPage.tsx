@@ -35,7 +35,9 @@ export function NotificationsPage() {
               }}
             >
               <Typography sx={{ fontSize: 13, fontWeight: n.readAt ? 400 : 600 }}>{n.title}</Typography>
-              <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>{n.message}</Typography>
+              {n.request?.reference && (
+                <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>Référence : {n.request.reference}</Typography>
+              )}
               <Typography sx={{ fontSize: 11, color: '#95A5A6', mt: 0.3 }}>{formatDateTime(n.createdAt)}</Typography>
             </Box>
           ))}

@@ -30,6 +30,15 @@ import { PERMISSION_SUBTYPE_LABELS, REQUEST_TYPE_LABELS, formatDate } from '../t
 
 const REQUIRES_ATTACHMENT: RequestType[] = ['CONGE_MALADIE', 'CONGE_MATERNITE', 'PERMISSION_EVENEMENT_FAMILIAL'];
 
+// Prior-leave types a reprise-de-service note can grant (matches the API's
+// REPRISE_PRIOR_TYPES). Printed on the attestation via reprisePriorType.
+const REPRISE_PRIOR_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'PERMISSION', label: "Permission d'absence" },
+  { value: 'CONGE_ANNUEL', label: 'Congé annuel' },
+  { value: 'CONGE_MALADIE', label: 'Congé de maladie' },
+  { value: 'CONGE_MATERNITE', label: 'Congé de maternité' },
+];
+
 const schema = z
   .object({
     type: z.enum([
@@ -45,6 +54,13 @@ const schema = z
     endDate: z.string().min(1, 'La date de fin est requise.'),
     motif: z.string().optional(),
     interimEmployeeId: z.string().optional(),
+    // REPRISE_SERVICE only — details of the note that granted the prior leave.
+    // Optional: any left empty print as a blank "………" on the attestation.
+    repriseNoteNumber: z.string().optional(),
+    repriseNoteDate: z.string().optional(),
+    reprisePriorType: z.string().optional(),
+    reprisePriorStartDate: z.string().optional(),
+    reprisePriorEndDate: z.string().optional(),
   })
   .refine((v) => v.startDate <= v.endDate, {
     message: 'La date de fin doit être postérieure ou égale à la date de début.',
@@ -57,7 +73,9 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-const STEPS = ['Informations', 'Détails de la demande', 'Documents', 'Vérification & Transmission'];
+// Two screens only: a single saisie form, then the verification/recap before
+// submission.
+const STEPS = ['Saisie de la demande', 'Vérification & Transmission'];
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -70,6 +88,11 @@ export function NewRequestPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [draft, setDraft] = useState<LeaveRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A file picked on the form before the draft exists — uploaded when the user
+  // moves to the verification screen (attachments need a persisted request id).
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [advancing, setAdvancing] = useState(false);
 
   const { data: quota } = useQuery({ queryKey: ['quota'], queryFn: () => fetchQuotaSummary() });
   const {
@@ -83,6 +106,7 @@ export function NewRequestPage() {
     defaultValues: { type: 'CONGE_ANNUEL', startDate: '', endDate: '', motif: '' },
   });
   const type = watch('type');
+  const permissionSubType = watch('permissionSubType');
 
   // ATTESTATION_PRESENCE has no meaningful date range for the requester to
   // pick — the schema still requires non-null dates, so we fill them with
@@ -114,40 +138,29 @@ export function NewRequestPage() {
     return null;
   }
 
-  const createMutation = useMutation({
-    mutationFn: (values: FormValues) =>
-      createRequest({
-        type: values.type,
-        permissionSubType: values.permissionSubType as PermissionSubType | undefined,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        motif: values.motif || undefined,
-        interimEmployeeId: values.interimEmployeeId || undefined,
-      }),
-    onSuccess: (req) => {
-      setDraft(req);
-      const quotaError = checkAnnualLeaveQuota(req);
-      if (quotaError) {
-        setError(quotaError);
-        return;
-      }
-      setError(null);
-      setActiveStep(2);
-    },
-    onError: (e) => setError(getApiErrorMessage(e, 'Impossible de créer la demande.')),
-  });
+  function buildPayload(values: FormValues) {
+    return {
+      type: values.type,
+      permissionSubType: values.permissionSubType as PermissionSubType | undefined,
+      startDate: values.startDate,
+      endDate: values.endDate,
+      motif: values.motif || undefined,
+      interimEmployeeId: values.interimEmployeeId || undefined,
+      repriseNoteNumber: values.repriseNoteNumber || undefined,
+      repriseNoteDate: values.repriseNoteDate || undefined,
+      reprisePriorType: values.reprisePriorType || undefined,
+      reprisePriorStartDate: values.reprisePriorStartDate || undefined,
+      reprisePriorEndDate: values.reprisePriorEndDate || undefined,
+    };
+  }
 
-  const updateMutation = useMutation({
-    mutationFn: (values: FormValues) =>
-      updateRequest(draft!.id, {
-        type: values.type,
-        permissionSubType: values.permissionSubType as PermissionSubType | undefined,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        motif: values.motif || undefined,
-        interimEmployeeId: values.interimEmployeeId || undefined,
-      }),
-    onSuccess: (req) => {
+  // Single "Suivant": persist the draft (create the first time, update on
+  // return), upload the pending justificatif if there is one, then move to the
+  // verification screen.
+  const onFormNext = handleSubmit(async (values) => {
+    setAdvancing(true);
+    try {
+      const req = draft ? await updateRequest(draft.id, buildPayload(values)) : await createRequest(buildPayload(values));
       setDraft(req);
       const quotaError = checkAnnualLeaveQuota(req);
       if (quotaError) {
@@ -155,9 +168,19 @@ export function NewRequestPage() {
         return;
       }
       setError(null);
-      setActiveStep(2);
-    },
-    onError: (e) => setError(getApiErrorMessage(e, 'Impossible de mettre à jour la demande.')),
+      if (pendingFile) {
+        const attachment = await uploadAttachment(req.id, pendingFile, setUploadProgress);
+        setDraft({ ...req, attachments: [...req.attachments, attachment] });
+        setPendingFile(null);
+        setUploadProgress(null);
+      }
+      setActiveStep(1);
+    } catch (e) {
+      setUploadProgress(null);
+      setError(getApiErrorMessage(e, "Impossible d'enregistrer la demande."));
+    } finally {
+      setAdvancing(false);
+    }
   });
 
   const submitMutation = useMutation({
@@ -168,23 +191,6 @@ export function NewRequestPage() {
       navigate(`/requests/${draft!.id}`);
     },
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de soumettre la demande.')),
-  });
-
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadAttachment(draft!.id, file, setUploadProgress),
-    onSuccess: (attachment) => {
-      setError(null);
-      setUploadProgress(null);
-      // The draft is local state, not driven by the requests query cache —
-      // update it directly, otherwise the new file only appears after
-      // leaving and re-entering this step.
-      setDraft((prev) => (prev ? { ...prev, attachments: [...prev.attachments, attachment] } : prev));
-    },
-    onError: (e) => {
-      setUploadProgress(null);
-      setError(getApiErrorMessage(e, "Impossible d'ajouter la pièce jointe."));
-    },
   });
 
   const deleteAttachmentMutation = useMutation({
@@ -199,21 +205,13 @@ export function NewRequestPage() {
   });
 
   const attachmentsRequired = REQUIRES_ATTACHMENT.includes(type);
-
-  const onStep2Next = handleSubmit((values) => {
-    if (draft) {
-      updateMutation.mutate(values);
-    } else {
-      createMutation.mutate(values);
-    }
-  });
-
   const available = quota?.congeAnnuel.availableDays ?? null;
 
   const showInterim = type === 'CONGE_ANNUEL';
   const showPermissionSubType = type === 'PERMISSION_EVENEMENT_FAMILIAL';
   const isReprise = type === 'REPRISE_SERVICE';
   const isAttestation = type === 'ATTESTATION_PRESENCE';
+  const hasAttachment = !!pendingFile || (draft?.attachments.length ?? 0) > 0;
 
   return (
     <Box sx={{ maxWidth: 760 }}>
@@ -280,7 +278,7 @@ export function NewRequestPage() {
                   )}
                 />
               )}
-              {showPermissionSubType && (
+              {showPermissionSubType && permissionSubType === 'AUTRE' && (
                 <Controller
                   name="motif"
                   control={control}
@@ -289,14 +287,7 @@ export function NewRequestPage() {
                   )}
                 />
               )}
-              <Button variant="contained" onClick={() => setActiveStep(1)} sx={{ alignSelf: 'flex-start' }}>
-                Étape suivante →
-              </Button>
-            </Stack>
-          )}
 
-          {activeStep === 1 && (
-            <Stack spacing={2}>
               {isAttestation ? (
                 <Controller
                   name="motif"
@@ -314,26 +305,94 @@ export function NewRequestPage() {
                   )}
                 />
               ) : isReprise ? (
-                <Controller
-                  name="startDate"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      type="date"
-                      label="Date de reprise de service"
-                      required
-                      fullWidth
-                      slotProps={{ inputLabel: { shrink: true } }}
-                      error={!!errors.startDate}
-                      helperText={errors.startDate?.message}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        setValue('endDate', e.target.value, { shouldValidate: true });
-                      }}
+                <Stack spacing={2}>
+                  <Controller
+                    name="startDate"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        type="date"
+                        label="Date de reprise de service"
+                        required
+                        fullWidth
+                        slotProps={{ inputLabel: { shrink: true } }}
+                        error={!!errors.startDate}
+                        helperText={errors.startDate?.message}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setValue('endDate', e.target.value, { shouldValidate: true });
+                        }}
+                      />
+                    )}
+                  />
+                  <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mt: 1 }}>
+                    Note administrative du congé précédent
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: '#5D6D7E', mt: -1 }}>
+                    Détails de la note qui vous a accordé le congé. Les champs laissés vides apparaîtront en pointillés
+                    sur l'attestation, à compléter à la main.
+                  </Typography>
+                  <Controller
+                    name="repriseNoteNumber"
+                    control={control}
+                    render={({ field }) => <TextField {...field} label="Numéro de la note" fullWidth />}
+                  />
+                  <Controller
+                    name="repriseNoteDate"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        type="date"
+                        label="Date de la note"
+                        fullWidth
+                        slotProps={{ inputLabel: { shrink: true } }}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name="reprisePriorType"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} select label="Type de congé accordé">
+                        {REPRISE_PRIOR_TYPE_OPTIONS.map((o) => (
+                          <MenuItem key={o.value} value={o.value}>
+                            {o.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    )}
+                  />
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Controller
+                      name="reprisePriorStartDate"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          type="date"
+                          label="Congé précédent — du"
+                          fullWidth
+                          slotProps={{ inputLabel: { shrink: true } }}
+                        />
+                      )}
                     />
-                  )}
-                />
+                    <Controller
+                      name="reprisePriorEndDate"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          type="date"
+                          label="au"
+                          fullWidth
+                          slotProps={{ inputLabel: { shrink: true } }}
+                        />
+                      )}
+                    />
+                  </Box>
+                </Stack>
               ) : (
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <Controller
@@ -393,101 +452,112 @@ export function NewRequestPage() {
                   )}
                 />
               )}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Button onClick={() => setActiveStep(0)}>← Étape précédente</Button>
+
+              {/* Justificatif — shown only for the request types that require one. */}
+              {attachmentsRequired && (
+                <Stack spacing={1}>
+                  <Alert severity="info">
+                    Une pièce justificative est obligatoire pour ce type de demande (PDF, JPG ou PNG, 10 Mo max).
+                  </Alert>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    sx={{ alignSelf: 'flex-start' }}
+                    disabled={advancing}
+                  >
+                    Charger un fichier
+                    <input
+                      type="file"
+                      hidden
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setPendingFile(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </Button>
+                  {draft?.attachments.map((a) => (
+                    <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={{ fontSize: 13, flex: 1 }}>{a.originalName}</Typography>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        disabled={deleteAttachmentMutation.isPending}
+                        onClick={() => deleteAttachmentMutation.mutate(a.id)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  {pendingFile && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={{ fontSize: 13, flex: 1 }}>{pendingFile.name}</Typography>
+                      <IconButton size="small" color="error" onClick={() => setPendingFile(null)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
+                  {uploadProgress !== null && (
+                    <Box sx={{ maxWidth: 320 }}>
+                      <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
+                      <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                        Téléchargement… {uploadProgress ?? 0}%
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   variant="contained"
-                  onClick={onStep2Next}
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  onClick={onFormNext}
+                  disabled={advancing || (attachmentsRequired && !hasAttachment)}
                 >
-                  Étape suivante →
+                  Suivant →
                 </Button>
               </Box>
             </Stack>
           )}
 
-          {activeStep === 2 && draft && (
-            <Stack spacing={2}>
-              {!isAttestation && !isReprise && (
-                <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>
-                  Durée calculée : {draft.calculatedDays ?? 0} jour(s)
-                </Typography>
-              )}
-              {draft.durationWarnings && draft.durationWarnings.length > 0 && (
-                <Alert severity="warning">{draft.durationWarnings.join(' ')}</Alert>
-              )}
-              {attachmentsRequired ? (
-                <Alert severity="info">
-                  Une pièce justificative est obligatoire pour ce type de demande (PDF, JPG ou PNG, 10 Mo max).
-                </Alert>
-              ) : (
-                <Alert severity="info">Aucune pièce justificative n'est exigée pour ce type de demande.</Alert>
-              )}
-              <Button
-                component="label"
-                variant="outlined"
-                sx={{ alignSelf: 'flex-start' }}
-                disabled={uploadMutation.isPending}
-              >
-                Charger un fichier
-                <input
-                  type="file"
-                  hidden
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadMutation.mutate(file);
-                    e.target.value = '';
-                  }}
-                />
-              </Button>
-              {uploadMutation.isPending && (
-                <Box sx={{ maxWidth: 320 }}>
-                  <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
-                    Téléchargement… {uploadProgress ?? 0}%
-                  </Typography>
-                </Box>
-              )}
-              <Stack spacing={0.5}>
-                {draft.attachments.map((a) => (
-                  <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography sx={{ fontSize: 13, flex: 1 }}>{a.originalName}</Typography>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      disabled={deleteAttachmentMutation.isPending}
-                      onClick={() => deleteAttachmentMutation.mutate(a.id)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                ))}
-              </Stack>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Button onClick={() => setActiveStep(1)}>← Étape précédente</Button>
-                <Button
-                  variant="contained"
-                  onClick={() => setActiveStep(3)}
-                  disabled={attachmentsRequired && draft.attachments.length === 0}
-                >
-                  Étape suivante →
-                </Button>
-              </Box>
-            </Stack>
-          )}
-
-          {activeStep === 3 && draft && (
+          {activeStep === 1 && draft && (
             <Stack spacing={2}>
               <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Récapitulatif</Typography>
               <Typography sx={{ fontSize: 13 }}>{REQUEST_TYPE_LABELS[draft.type]}</Typography>
               {isAttestation ? (
                 <Typography sx={{ fontSize: 13 }}>Référence de la note : {draft.motif}</Typography>
               ) : isReprise ? (
-                <Typography sx={{ fontSize: 13 }}>Reprise de service le {formatDate(draft.startDate)}</Typography>
+                <Stack spacing={0.5}>
+                  <Typography sx={{ fontSize: 13 }}>Reprise de service le {formatDate(draft.startDate)}</Typography>
+                  {(draft.repriseNoteNumber ||
+                    draft.repriseNoteDate ||
+                    draft.reprisePriorType ||
+                    draft.reprisePriorStartDate ||
+                    draft.reprisePriorEndDate) && (
+                    <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
+                      Note n°{draft.repriseNoteNumber || '………'}
+                      {draft.repriseNoteDate ? ` du ${formatDate(draft.repriseNoteDate)}` : ''}
+                      {draft.reprisePriorType
+                        ? ` — ${REPRISE_PRIOR_TYPE_OPTIONS.find((o) => o.value === draft.reprisePriorType)?.label ?? draft.reprisePriorType}`
+                        : ''}
+                      {draft.reprisePriorStartDate || draft.reprisePriorEndDate
+                        ? ` (du ${draft.reprisePriorStartDate ? formatDate(draft.reprisePriorStartDate) : '………'} au ${draft.reprisePriorEndDate ? formatDate(draft.reprisePriorEndDate) : '………'})`
+                        : ''}
+                    </Typography>
+                  )}
+                </Stack>
               ) : (
                 <Typography sx={{ fontSize: 13 }}>
                   Du {formatDate(draft.startDate)} au {formatDate(draft.endDate)} — {draft.calculatedDays} jour(s)
+                </Typography>
+              )}
+              {draft.durationWarnings && draft.durationWarnings.length > 0 && (
+                <Alert severity="warning">{draft.durationWarnings.join(' ')}</Alert>
+              )}
+              {draft.attachments.length > 0 && (
+                <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
+                  Pièce justificative : {draft.attachments.map((a) => a.originalName).join(', ')}
                 </Typography>
               )}
               <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
@@ -499,7 +569,7 @@ export function NewRequestPage() {
                 pour avis, avant transmission à la SDAG.
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Button onClick={() => setActiveStep(2)}>← Étape précédente</Button>
+                <Button onClick={() => setActiveStep(0)}>← Modifier la saisie</Button>
                 <Button variant="contained" onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
                   Soumettre la demande
                 </Button>

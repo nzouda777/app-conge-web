@@ -126,6 +126,11 @@ export interface LeaveRequest {
   motif: string | null;
   calculatedDays: number | null;
   imputedAnnualLeaveDays: number | null;
+  repriseNoteNumber: string | null;
+  repriseNoteDate: string | null;
+  reprisePriorType: string | null;
+  reprisePriorStartDate: string | null;
+  reprisePriorEndDate: string | null;
   status: RequestStatus;
   currentAssigneeId: string | null;
   submittedAt: string | null;
@@ -170,6 +175,7 @@ export interface AppNotification {
   title: string;
   message: string;
   requestId: string | null;
+  request?: { reference: string | null } | null;
   readAt: string | null;
   createdAt: string;
 }
