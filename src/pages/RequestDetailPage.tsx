@@ -33,7 +33,7 @@ import {
   submitRequest,
   uploadAttachment,
 } from '../api/requests';
-import { assignRequest, submitDecision, submitTreatment } from '../api/sdag';
+import { assignRequest, submitDecision } from '../api/sdag';
 import { listEmployees } from '../api/misc';
 import { StatusBadge } from '../components/StatusBadge';
 import { getApiErrorMessage } from '../api/client';
@@ -43,6 +43,16 @@ import {
   formatDate,
   formatDateTime,
 } from '../types/labels';
+import type { Attachment } from '../types/api';
+
+// The validated, signed document is the one the agent de traitement dropped
+// on the dossier — as opposed to the requester's own justificatifs. It is
+// what the requester receives once the dossier is validated, and validating
+// requires it (see SdagService.decision). TEST_INTEGRAL counts too: the omni
+// test account plays the agent's part on its own dossier.
+function isTreatedDocument(a: Attachment): boolean {
+  return a.uploadedBy?.role === 'AGENT_TRAITEMENT_SDAG' || a.uploadedBy?.role === 'TEST_INTEGRAL';
+}
 
 export function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -107,23 +117,14 @@ export function RequestDetailPage() {
     onError: (e) => setError(getApiErrorMessage(e, "Impossible de coter cette demande.")),
   });
 
-  const treatmentMutation = useMutation({
-    mutationFn: () => submitTreatment(requestId, observation),
-    onSuccess: () => {
-      invalidate();
-      setObservation('');
-      setError(null);
-    },
-    onError: (e) => setError(getApiErrorMessage(e, "Impossible d'enregistrer l'étude.")),
-  });
-
   const decisionMutation = useMutation({
     mutationFn: (params: { decision: 'APPROVED' | 'REJECTED'; comment?: string }) =>
-      submitDecision(requestId, params.decision, params.comment),
+      submitDecision(requestId, params.decision, params.comment, observation),
     onSuccess: () => {
       invalidate();
       setRejectDialog(null);
       setComment('');
+      setObservation('');
       setError(null);
     },
     onError: (e) => setError(getApiErrorMessage(e, "Impossible d'enregistrer la décision.")),
@@ -169,22 +170,23 @@ export function RequestDetailPage() {
     request.employee.managerId === user?.employeeId;
   const canAssign =
     (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) && request.status === 'PENDING_ASSIGNMENT';
-  const canTreat =
+  // The agent de traitement holding the dossier validates or rejects it
+  // directly — the Sous-Directeur's last act on the file is the cotation, so
+  // there is no separate "décision" stage for them any more.
+  const canDecideAsAgent =
     (user?.role === 'AGENT_TRAITEMENT_SDAG' || isTest) &&
     request.status === 'ASSIGNED' &&
     request.currentAssigneeId === user?.employeeId;
-  const canDecide =
-    (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) && request.status === 'RETURNED_TO_SDAG_DIRECTOR';
   // Mirrors DocumentsController's access rule: while the dossier is being
-  // instructed (ASSIGNED / RETURNED_TO_SDAG_DIRECTOR), only the assigned
-  // agent and the Sous-Directeur SDAG can consult the document — everyone
-  // with view rights gets it once APPROVED.
+  // instructed (ASSIGNED), only the assigned agent and the Sous-Directeur
+  // SDAG can consult the document — everyone with view rights gets it once
+  // the dossier is decided.
   const isAssignedAgent =
     (user?.role === 'AGENT_TRAITEMENT_SDAG' || isTest) && request.currentAssigneeId === user?.employeeId;
   const isDirector = user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest;
   const isRequestManager =
     (user?.role === 'RESPONSABLE_HIERARCHIQUE' || isTest) && request.employee.managerId === user?.employeeId;
-  const inProgressStage = request.status === 'ASSIGNED' || request.status === 'RETURNED_TO_SDAG_DIRECTOR';
+  const inProgressStage = request.status === 'ASSIGNED';
   const isDecided = request.status === 'APPROVED' || request.status === 'REJECTED';
   const canDownloadDocument = inProgressStage
     ? isAssignedAgent || isDirector || user?.role === 'ADMIN'
@@ -202,7 +204,15 @@ export function RequestDetailPage() {
   // document" (see DocumentsController) rather than listed here — their
   // own original justificatifs no longer matter either. SDAG/admin keep
   // seeing the full attachment history under "Pièces justificatives".
-  const visibleAttachments = isOwner && isDecided ? [] : request.attachments;
+  const treatedDocuments = request.attachments.filter(isTreatedDocument);
+  const hasTreatedDocument = treatedDocuments.length > 0;
+  // While the agent holds the dossier, their final document lives in the
+  // Actions panel below, so it isn't repeated in this list.
+  const visibleAttachments = isOwner && isDecided
+    ? []
+    : canDecideAsAgent
+      ? request.attachments.filter((a) => !isTreatedDocument(a))
+      : request.attachments;
   // Visible to whoever can already view the request — the SDAG director
   // needs to read it before deciding, and it was previously surfaced
   // nowhere at all.
@@ -255,8 +265,8 @@ export function RequestDetailPage() {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mt: 2, mb: 2 }}>
               {request.type === 'ATTESTATION_PRESENCE' ? (
                 <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Référence de la note d'affectation</Typography>
-                  <Typography sx={{ fontSize: 14 }}>{request.motif}</Typography>
+                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Objet</Typography>
+                  <Typography sx={{ fontSize: 14 }}>Attestation de présence effective au poste</Typography>
                 </Box>
               ) : request.type === 'REPRISE_SERVICE' ? (
                 <Box>
@@ -301,7 +311,7 @@ export function RequestDetailPage() {
             )}
 
             <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72', mb: 1 }}>Pièces justificatives</Typography>
-            <Stack spacing={0.5} sx={{ mb: canSubmit || canTreat ? 1.5 : 0 }}>
+            <Stack spacing={0.5} sx={{ mb: canSubmit ? 1.5 : 0 }}>
               {visibleAttachments.length === 0 && (
                 <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>Aucune pièce jointe.</Typography>
               )}
@@ -328,7 +338,7 @@ export function RequestDetailPage() {
                 </Box>
               ))}
             </Stack>
-            {(canSubmit || canTreat) && (
+            {canSubmit && (
               <Button
                 component="label"
                 size="small"
@@ -349,19 +359,13 @@ export function RequestDetailPage() {
                 />
               </Button>
             )}
-            {uploadMutation.isPending && (
+            {canSubmit && uploadMutation.isPending && (
               <Box sx={{ maxWidth: 320, mt: 1 }}>
                 <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
                 <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
                   Téléchargement… {uploadProgress ?? 0}%
                 </Typography>
               </Box>
-            )}
-            {canTreat && (
-              <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
-                Téléchargez le dossier, traitez-le, puis déposez ici le fichier final avant de le retourner au
-                Sous-Directeur.
-              </Typography>
             )}
           </Box>
 
@@ -408,7 +412,7 @@ export function RequestDetailPage() {
         </Alert>
       )}
 
-      {(canSubmit || canManagerReview || canAssign || canTreat || canDecide) && (
+      {(canSubmit || canManagerReview || canAssign || canDecideAsAgent) && (
         <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 2 }}>Actions</Typography>
 
@@ -467,41 +471,108 @@ export function RequestDetailPage() {
             </Stack>
           )}
 
-          {canTreat && (
-            <Stack spacing={1.5} sx={{ maxWidth: 600 }}>
+          {canDecideAsAgent && (
+            <Stack spacing={2.5} sx={{ maxWidth: 600 }}>
+              {/* Le document final se dépose ici, dans les actions : il n'est
+                  plus une simple pièce du dossier, il est l'acte de validation. */}
+              <Box>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72' }}>
+                  Document traité et signé
+                </Typography>
+                <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mt: 0.3, mb: 1.2 }}>
+                  Téléchargez le dossier, traitez-le hors application, puis déposez ici le document validé et signé.
+                  Il est obligatoire pour valider, et c'est celui que l'agent demandeur recevra.
+                </Typography>
+                {treatedDocuments.length > 0 && (
+                  <Stack spacing={0.5} sx={{ mb: 1.2 }}>
+                    {treatedDocuments.map((a) => (
+                      <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <a
+                          href={attachmentDownloadUrl(request.id, a.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ fontSize: 13, color: '#2E86C1' }}
+                        >
+                          {a.originalName} ({Math.round(a.size / 1024)} Ko)
+                        </a>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={deleteAttachmentMutation.isPending}
+                          onClick={() => deleteAttachmentMutation.mutate(a.id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+                <Button
+                  component="label"
+                  size="small"
+                  startIcon={<UploadFileIcon />}
+                  variant={hasTreatedDocument ? 'outlined' : 'contained'}
+                  disabled={uploadMutation.isPending}
+                >
+                  {hasTreatedDocument ? 'Déposer une autre version' : 'Téléverser le document (PDF, JPG, PNG)'}
+                  <input
+                    type="file"
+                    hidden
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadMutation.mutate(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </Button>
+                {uploadMutation.isPending && (
+                  <Box sx={{ maxWidth: 320, mt: 1 }}>
+                    <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
+                    <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                      Téléchargement… {uploadProgress ?? 0}%
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
               <TextField
                 label="Observation (facultatif)"
                 placeholder="Notes sur l'étude du dossier…"
                 multiline
-                minRows={4}
+                minRows={3}
                 fullWidth
                 value={observation}
                 onChange={(e) => setObservation(e.target.value)}
               />
-              <Button variant="contained" onClick={() => treatmentMutation.mutate()} sx={{ alignSelf: 'flex-start' }}>
-                Retourner au Sous-Directeur
-              </Button>
-            </Stack>
-          )}
 
-          {canDecide && (
-            <Stack direction="row" spacing={1.5}>
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                onClick={() => decisionMutation.mutate({ decision: 'APPROVED' })}
-              >
-                Valider
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<CancelIcon />}
-                onClick={() => setRejectDialog('sdag')}
-              >
-                Rejeter
-              </Button>
+              {!hasTreatedDocument && (
+                <Alert severity="info">
+                  Déposez le document traité et signé pour pouvoir valider ce dossier. Un rejet reste possible sans
+                  document.
+                </Alert>
+              )}
+
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<CheckCircleIcon />}
+                  disabled={!hasTreatedDocument || decisionMutation.isPending}
+                  onClick={() => decisionMutation.mutate({ decision: 'APPROVED' })}
+                >
+                  Valider
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<CancelIcon />}
+                  disabled={decisionMutation.isPending}
+                  onClick={() => setRejectDialog('sdag')}
+                >
+                  Rejeter
+                </Button>
+              </Stack>
             </Stack>
           )}
         </Paper>

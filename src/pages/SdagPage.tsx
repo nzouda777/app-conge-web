@@ -12,7 +12,6 @@ const TABS: { label: string; status?: RequestStatus }[] = [
   { label: 'Toutes' },
   { label: 'À coter', status: 'PENDING_ASSIGNMENT' },
   { label: 'En traitement', status: 'ASSIGNED' },
-  { label: 'Retournées (décision)', status: 'RETURNED_TO_SDAG_DIRECTOR' },
   { label: 'Approuvées', status: 'APPROVED' },
   { label: 'Rejetées', status: 'REJECTED' },
 ];

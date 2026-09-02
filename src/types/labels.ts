@@ -24,7 +24,9 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   MANAGER_REJECTED: 'Avis défavorable du responsable',
   PENDING_ASSIGNMENT: 'Transmise à la SDAG',
   ASSIGNED: 'En cours de traitement SDAG',
-  RETURNED_TO_SDAG_DIRECTOR: 'En attente de décision SDAG',
+  // No longer reachable: the agent de traitement now decides directly.
+  // Kept for dossiers that went through the previous circuit.
+  RETURNED_TO_SDAG_DIRECTOR: 'En attente de décision SDAG (ancien circuit)',
   APPROVED: 'Approuvée',
   REJECTED: 'Rejetée',
 };

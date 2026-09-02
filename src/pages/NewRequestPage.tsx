@@ -66,10 +66,17 @@ const schema = z
     message: 'La date de fin doit être postérieure ou égale à la date de début.',
     path: ['endDate'],
   })
-  .refine((v) => v.type !== 'ATTESTATION_PRESENCE' || !!v.motif?.trim(), {
-    message: "La référence de la note d'affectation est requise.",
-    path: ['motif'],
-  });
+  // A "permission motivée" is precisely the case where the sub-type carries no
+  // meaning of its own: the motif IS the justification, so it is required and
+  // printed on the request document.
+  .refine(
+    (v) =>
+      !(v.type === 'PERMISSION_EVENEMENT_FAMILIAL' && v.permissionSubType === 'AUTRE') || !!v.motif?.trim(),
+    {
+      message: 'Le motif de la permission est requis.',
+      path: ['motif'],
+    },
+  );
 
 type FormValues = z.infer<typeof schema>;
 
@@ -283,27 +290,27 @@ export function NewRequestPage() {
                   name="motif"
                   control={control}
                   render={({ field }) => (
-                    <TextField {...field} label="Motif (facultatif)" multiline minRows={2} />
+                    <TextField
+                      {...field}
+                      label="Saisissez le motif de la permission"
+                      required
+                      multiline
+                      minRows={2}
+                      error={!!errors.motif}
+                      helperText={errors.motif?.message ?? 'Ce motif figurera sur la demande transmise.'}
+                    />
                   )}
                 />
               )}
 
               {isAttestation ? (
-                <Controller
-                  name="motif"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Référence de la note d'affectation"
-                      required
-                      multiline
-                      minRows={2}
-                      error={!!errors.motif}
-                      helperText={errors.motif?.message ?? "Note vous affectant à ce poste, citée dans l'attestation."}
-                    />
-                  )}
-                />
+                // Nothing else to capture: the attestation is established from
+                // the agent's own file. Dates are filled with today's date
+                // transparently (see the effect above).
+                <Alert severity="info">
+                  Aucune autre information n'est nécessaire. Votre demande sera transmise à votre supérieur
+                  hiérarchique, puis à la SDAG.
+                </Alert>
               ) : isReprise ? (
                 <Stack spacing={2}>
                   <Controller
@@ -526,7 +533,7 @@ export function NewRequestPage() {
               <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Récapitulatif</Typography>
               <Typography sx={{ fontSize: 13 }}>{REQUEST_TYPE_LABELS[draft.type]}</Typography>
               {isAttestation ? (
-                <Typography sx={{ fontSize: 13 }}>Référence de la note : {draft.motif}</Typography>
+                <Typography sx={{ fontSize: 13 }}>Attestation de présence effective au poste</Typography>
               ) : isReprise ? (
                 <Stack spacing={0.5}>
                   <Typography sx={{ fontSize: 13 }}>Reprise de service le {formatDate(draft.startDate)}</Typography>
