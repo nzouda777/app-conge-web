@@ -14,7 +14,7 @@ import { AdminDecisionsPage } from './pages/admin/AdminDecisionsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // ADMIN has its own separate space — send it to /admin instead of the
-// normal operational dashboard whenever we'd otherwise land on "/".
+// normal operational dashboard whenever we'd otherwise land on  "/".
 function RootRedirect() {
   const { user } = useAuth();
   return <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/dashboard'} replace />;
