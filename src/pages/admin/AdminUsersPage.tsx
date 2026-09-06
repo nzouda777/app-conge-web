@@ -50,7 +50,14 @@ import { ROLE_LABELS } from '../../types/labels';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { AdminUser, Role } from '../../types/api';
 
-const ROLES: Role[] = ['AGENT', 'RESPONSABLE_HIERARCHIQUE', 'SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'ADMIN'];
+const ROLES: Role[] = [
+  'AGENT',
+  'RESPONSABLE_HIERARCHIQUE',
+  'SOUS_DIRECTEUR_SDAG',
+  'AGENT_TRAITEMENT_SDAG',
+  'DIRECTEUR_GENERAL',
+  'ADMIN',
+];
 
 export function AdminUsersPage() {
   const queryClient = useQueryClient();

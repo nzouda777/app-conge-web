@@ -47,6 +47,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   RESPONSABLE_HIERARCHIQUE: 'Responsable hiérarchique',
   SOUS_DIRECTEUR_SDAG: 'Sous-Directeur des Affaires Générales',
   AGENT_TRAITEMENT_SDAG: 'Agent de traitement SDAG',
+  DIRECTEUR_GENERAL: 'Directeur Général du Budget',
   ADMIN: 'Administrateur',
   TEST_INTEGRAL: 'Compte de test (intégral)',
 };

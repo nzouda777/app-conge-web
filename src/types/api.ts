@@ -3,6 +3,7 @@ export type Role =
   | 'RESPONSABLE_HIERARCHIQUE'
   | 'SOUS_DIRECTEUR_SDAG'
   | 'AGENT_TRAITEMENT_SDAG'
+  | 'DIRECTEUR_GENERAL'
   | 'ADMIN'
   | 'TEST_INTEGRAL';
 
@@ -62,6 +63,11 @@ export interface AuthUser {
   role: Role;
   employeeId: string;
   employee?: Employee;
+  // True when at least one employee reports to this user. Drives the
+  // "Demandes à examiner" entry: reviewing is a hierarchy fact, not a role,
+  // so a Chef de Service, a Sous-Directeur and the Directeur Général all
+  // qualify. Absent on older tokens/profiles — treat undefined as false.
+  hasSubordinates?: boolean;
 }
 
 export interface Attachment {

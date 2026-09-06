@@ -78,15 +78,17 @@ export function Layout({ children }: { children: ReactNode }) {
       : [
           { label: 'Tableau de bord', icon: <DashboardIcon />, to: '/dashboard' },
           { label: 'Mes demandes', icon: <AssignmentIcon />, to: '/requests' },
-          // Every DGB staff member — whatever their role — can file a request,
-          // so this stays unrestricted (the whole array is already non-ADMIN).
-          { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' },
-          {
-            label: 'Demandes à examiner',
-            icon: <FactCheckIcon />,
-            to: '/manager',
-            roles: ['RESPONSABLE_HIERARCHIQUE', 'TEST_INTEGRAL'],
-          },
+          // Every DGB staff member — whatever their role — can file a
+          // request. The Directeur Général is the one exception: he reviews,
+          // he does not request.
+          ...(user.role === 'DIRECTEUR_GENERAL'
+            ? []
+            : [{ label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' }]),
+          // Shown to whoever actually has people reporting to them — a Chef de
+          // Service, a Sous-Directeur, the DG — rather than to one fixed role.
+          ...(user.hasSubordinates || user.role === 'TEST_INTEGRAL'
+            ? [{ label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' }]
+            : []),
           {
             label: 'Vue SDAG',
             icon: <GavelIcon />,

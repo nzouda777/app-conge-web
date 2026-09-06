@@ -65,10 +65,13 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Pas de restriction par rôle : examiner une demande dépend de qui vous
+          encadre, pas de votre rôle. La liste renvoyée par l'API est déjà
+          limitée à ce que l'utilisateur a le droit de voir. */}
       <Route
         path="/manager"
         element={
-          <ProtectedRoute roles={['RESPONSABLE_HIERARCHIQUE', 'TEST_INTEGRAL']}>
+          <ProtectedRoute>
             <ManagerRequestsPage />
           </ProtectedRoute>
         }

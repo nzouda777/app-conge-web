@@ -12,7 +12,8 @@ import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 export function DashboardPage() {
   const { user } = useAuth();
   const isAgent = user?.role === 'AGENT';
-  const isManager = user?.role === 'RESPONSABLE_HIERARCHIQUE';
+  // Anyone with people reporting to them has requests to review.
+  const isManager = !!user?.hasSubordinates;
   const isSdag = user?.role === 'SOUS_DIRECTEUR_SDAG' || user?.role === 'AGENT_TRAITEMENT_SDAG';
 
   const { data: quota } = useQuery({ queryKey: ['quota'], queryFn: () => fetchQuotaSummary() });
