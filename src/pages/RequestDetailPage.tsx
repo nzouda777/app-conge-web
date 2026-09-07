@@ -164,10 +164,12 @@ export function RequestDetailPage() {
   const isTest = user?.role === 'TEST_INTEGRAL';
   const isOwner = request.employeeId === user?.employeeId;
   const canSubmit = isOwner && request.status === 'DRAFT';
-  const canManagerReview =
-    (user?.role === 'RESPONSABLE_HIERARCHIQUE' || isTest) &&
-    request.status === 'PENDING_MANAGER_REVIEW' &&
-    request.employee.managerId === user?.employeeId;
+  // Giving the hierarchical avis depends on being this requester's manager —
+  // a Chef de Service, a Sous-Directeur or the Directeur Général alike — not
+  // on holding one particular role. Mirrors the API, which authorises on
+  // Employee.managerId (see RequestsService.managerReview).
+  const isRequestManager = request.employee.managerId === user?.employeeId || isTest;
+  const canManagerReview = isRequestManager && request.status === 'PENDING_MANAGER_REVIEW';
   const canAssign =
     (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) && request.status === 'PENDING_ASSIGNMENT';
   // The agent de traitement holding the dossier validates or rejects it
@@ -183,9 +185,8 @@ export function RequestDetailPage() {
   // the dossier is decided.
   const isAssignedAgent =
     (user?.role === 'AGENT_TRAITEMENT_SDAG' || isTest) && request.currentAssigneeId === user?.employeeId;
-  const isDirector = user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest;
-  const isRequestManager =
-    (user?.role === 'RESPONSABLE_HIERARCHIQUE' || isTest) && request.employee.managerId === user?.employeeId;
+  const isDirector =
+    user?.role === 'SOUS_DIRECTEUR_SDAG' || user?.role === 'DIRECTEUR_GENERAL' || isTest;
   const inProgressStage = request.status === 'ASSIGNED';
   const isDecided = request.status === 'APPROVED' || request.status === 'REJECTED';
   const canDownloadDocument = inProgressStage

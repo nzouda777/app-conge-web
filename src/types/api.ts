@@ -35,6 +35,17 @@ export type RequestStatus =
   | 'APPROVED'
   | 'REJECTED';
 
+// Aggregate figures for the Directeur Général's dashboard: counts only, no
+// personal detail. Drafts are excluded — they are not yet requests.
+export interface RequestsOverview {
+  year: number;
+  total: number;
+  inCircuit: number;
+  awaitingMyReview: number;
+  byStatus: Partial<Record<RequestStatus, number>>;
+  byType: Partial<Record<RequestType, number>>;
+}
+
 export interface OrganizationUnit {
   id: string;
   name: string;

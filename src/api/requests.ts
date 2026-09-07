@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { Attachment, LeaveRequest, Paginated, PermissionSubType, RequestStatus, RequestType } from '../types/api';
+import type {
+  Attachment,
+  LeaveRequest,
+  Paginated,
+  PermissionSubType,
+  RequestsOverview,
+  RequestStatus,
+  RequestType,
+} from '../types/api';
 
 export interface CreateRequestInput {
   type: RequestType;
@@ -76,4 +84,13 @@ export function attachmentDownloadUrl(requestId: string, attachmentId: string) {
 
 export function requestDocumentUrl(requestId: string) {
   return `${apiClient.defaults.baseURL}/requests/${requestId}/document`;
+}
+
+// Vue d'ensemble chiffrée du circuit — réservée au Directeur Général et à
+// l'administration (voir RequestsController.overview).
+export async function fetchRequestsOverview(year?: number) {
+  const { data } = await apiClient.get<RequestsOverview>('/requests/overview', {
+    params: year ? { year } : {},
+  });
+  return data;
 }

@@ -1,18 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { listRequests } from '../api/requests';
 import { StatusBadge } from '../components/StatusBadge';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 
 export function ManagerRequestsPage() {
+  const { user } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['requests', 'manager-all'],
     queryFn: () => listRequests({ pageSize: 50 }),
   });
 
-  const pending = data?.items.filter((r) => r.status === 'PENDING_MANAGER_REVIEW') ?? [];
-  const others = data?.items.filter((r) => r.status !== 'PENDING_MANAGER_REVIEW') ?? [];
+  // Cette page ne montre que l'équipe : les demandes dont l'utilisateur est le
+  // supérieur hiérarchique. On écarte donc ses propres demandes, et — pour le
+  // Directeur Général et la SDAG, qui voient l'ensemble du circuit — tous les
+  // dossiers sur lesquels ils n'ont pas d'avis à rendre.
+  const team = data?.items.filter((r) => r.employee.managerId === user?.employeeId) ?? [];
+  const pending = team.filter((r) => r.status === 'PENDING_MANAGER_REVIEW');
+  const others = team.filter((r) => r.status !== 'PENDING_MANAGER_REVIEW');
 
   return (
     <Box>
