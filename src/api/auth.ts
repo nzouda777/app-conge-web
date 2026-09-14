@@ -14,3 +14,14 @@ export async function fetchMe() {
   const { data } = await apiClient.get<AuthUser>('/auth/me');
   return data;
 }
+
+// Changement de mot de passe par le titulaire du compte. Le mot de passe
+// actuel est exigé côté serveur : une session laissée ouverte ne doit pas
+// suffire à s'approprier le compte.
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const { data } = await apiClient.post<{ success: boolean }>('/auth/change-password', {
+    currentPassword,
+    newPassword,
+  });
+  return data;
+}

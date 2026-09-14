@@ -29,6 +29,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
+import InsightsIcon from '@mui/icons-material/Insights';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ROLE_LABELS } from '../types/labels';
@@ -46,6 +48,7 @@ export function Layout({ children }: { children: ReactNode }) {
   // mobile (temporary overlay drawer, collapsed by default).
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
 
@@ -71,6 +74,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems: { label: string; icon: ReactNode; to: string; roles?: string[] }[] =
     user.role === 'ADMIN'
       ? [
+          { label: "Vue d'ensemble", icon: <InsightsIcon />, to: '/vue-ensemble' },
           { label: 'Utilisateurs', icon: <PeopleIcon />, to: '/admin' },
           { label: 'Demandes', icon: <ListAltIcon />, to: '/admin/requests' },
           { label: 'Décisions ministérielles', icon: <GavelOutlinedIcon />, to: '/admin/decisions' },
@@ -94,6 +98,14 @@ export function Layout({ children }: { children: ReactNode }) {
             icon: <GavelIcon />,
             to: '/sdag',
             roles: ['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'TEST_INTEGRAL'],
+          },
+          // Le Directeur Général l'a déjà comme tableau de bord ; cette entrée
+          // est là pour le Sous-Directeur SDAG, qui a le sien.
+          {
+            label: "Vue d'ensemble",
+            icon: <InsightsIcon />,
+            to: '/vue-ensemble',
+            roles: ['SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL'],
           },
           { label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' },
         ];
@@ -219,6 +231,14 @@ export function Layout({ children }: { children: ReactNode }) {
               <MenuItem
                 onClick={() => {
                   setMenuAnchor(null);
+                  setPasswordOpen(true);
+                }}
+              >
+                Modifier mon mot de passe
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setMenuAnchor(null);
                   logout().then(() => navigate('/login'));
                 }}
               >
@@ -229,6 +249,8 @@ export function Layout({ children }: { children: ReactNode }) {
         </AppBar>
         <Box sx={{ flex: 1, overflowY: 'auto', p: { xs: 2, md: 3 }, bgcolor: '#f5f6fa' }}>{children}</Box>
       </Box>
+
+      <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </Box>
   );
 }

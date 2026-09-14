@@ -12,6 +12,7 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
 import { AdminDecisionsPage } from './pages/admin/AdminDecisionsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { OverviewPage } from './pages/OverviewPage';
 
 // ADMIN has its own separate space — send it to /admin instead of the
 // normal operational dashboard whenever we'd otherwise land on  "/". 
@@ -62,6 +63,17 @@ export default function App() {
         element={
           <ProtectedRoute>
             <RequestDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Vue d'ensemble du circuit, en lecture seule. C'est le tableau de bord
+          du Directeur Général ; le Sous-Directeur SDAG et l'administration y
+          accèdent par cette route dédiée. */}
+      <Route
+        path="/vue-ensemble"
+        element={
+          <ProtectedRoute roles={['DIRECTEUR_GENERAL', 'SOUS_DIRECTEUR_SDAG', 'ADMIN', 'TEST_INTEGRAL']}>
+            <OverviewPage />
           </ProtectedRoute>
         }
       />

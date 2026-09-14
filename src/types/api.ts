@@ -46,6 +46,17 @@ export interface RequestsOverview {
   byType: Partial<Record<RequestType, number>>;
 }
 
+// Historique d'un agent tel que renvoyé par /requests/employee/:id/history.
+// `totals` porte sur le périmètre filtré : les chiffres affichés et ceux de
+// la fiche imprimée doivent coïncider.
+export interface EmployeeHistory {
+  employee: Employee & { grade?: string | null; position: string };
+  filters: { year: number | null; type: RequestType | null };
+  availableYears: number[];
+  items: LeaveRequest[];
+  totals: { type: RequestType; count: number; days: number; approvedDays: number }[];
+}
+
 export interface OrganizationUnit {
   id: string;
   name: string;

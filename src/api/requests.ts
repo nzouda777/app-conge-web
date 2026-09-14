@@ -4,6 +4,7 @@ import type {
   LeaveRequest,
   Paginated,
   PermissionSubType,
+  EmployeeHistory,
   RequestsOverview,
   RequestStatus,
   RequestType,
@@ -93,4 +94,31 @@ export async function fetchRequestsOverview(year?: number) {
     params: year ? { year } : {},
   });
   return data;
+}
+
+// Historique d'un agent — consultation en lecture seule (DG, Sous-Directeur
+// SDAG, administration). Les brouillons en sont exclus côté serveur.
+export async function fetchEmployeeHistory(
+  employeeId: string,
+  filters?: { year?: number; type?: RequestType },
+) {
+  const { data } = await apiClient.get<EmployeeHistory>(
+    `/requests/employee/${employeeId}/history`,
+    { params: { year: filters?.year, type: filters?.type } },
+  );
+  return data;
+}
+
+// Fiche imprimable du même historique, aux mêmes filtres.
+export function employeeHistoryDocumentUrl(
+  employeeId: string,
+  filters?: { year?: number; type?: RequestType },
+) {
+  const params = new URLSearchParams();
+  if (filters?.year) params.set('year', String(filters.year));
+  if (filters?.type) params.set('type', filters.type);
+  const query = params.toString();
+  return `${apiClient.defaults.baseURL}/requests/employee/${employeeId}/history/document${
+    query ? `?${query}` : ''
+  }`;
 }
