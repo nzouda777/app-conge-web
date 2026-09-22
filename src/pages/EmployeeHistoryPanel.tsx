@@ -25,7 +25,7 @@ import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import type { Employee, RequestType } from '../types/api';
 
 // Consultation en lecture seule de l'historique d'un agent : on le cherche par
-// nom ou matricule, on filtre par exercice et/ou nature, et la fiche
+// nom ou matricule, on filtre par exercice et/ou type, et la fiche
 // imprimable reprend exactement le périmètre affiché.
 export function EmployeeHistoryPanel() {
   const [selected, setSelected] = useState<Employee | null>(null);
@@ -101,7 +101,7 @@ export function EmployeeHistoryPanel() {
               <TextField
                 select
                 size="small"
-                label="Nature"
+                label="Type"
                 value={type}
                 onChange={(e) => setType(e.target.value as RequestType | '')}
                 sx={{ minWidth: 200 }}
@@ -177,7 +177,7 @@ export function EmployeeHistoryPanel() {
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Référence</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Nature</TableCell>
+                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Type</TableCell>
                     <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Période</TableCell>
                     <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Durée</TableCell>
                     <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Statut</TableCell>
