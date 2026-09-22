@@ -116,18 +116,6 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
   const typeMax = Math.max(1, ...typeRows.map((r) => r.v));
   const loadMax = Math.max(1, ...(o?.agentLoad ?? []).map((a) => a.count));
 
-  // Ce que l'utilisateur connecté doit traiter. Le reste du tableau de bord
-  // est global ; ce bloc seul est personnel.
-  const isSdag = user?.role === 'SOUS_DIRECTEUR_SDAG';
-  const actions = [
-    ...(isSdag ? [{ n: s.PENDING_ASSIGNMENT ?? 0, l: 'Dossiers à coter', to: '/sdag', tone: 'action' as Tone }] : []),
-    ...(o && o.awaitingMyReview > 0
-      ? [{ n: o.awaitingMyReview, l: 'Demandes à examiner', to: '/manager', tone: 'action' as Tone }]
-      : []),
-    { n: o?.stalled.count ?? 0, l: `Sans évolution depuis plus de ${o?.stalled.thresholdDays ?? 5} jours`, to: '/sdag', tone: 'danger' as Tone },
-    { n: o?.newToday ?? 0, l: "Nouvelles demandes aujourd'hui", to: '/sdag', tone: 'progress' as Tone },
-  ];
-
   const delay = (v: number | null | undefined) => (v === null || v === undefined ? '-' : `${v} j`);
 
   return (
@@ -215,56 +203,13 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
         )}
       </Paper>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '340px 1fr' }, gap: 1.5, mb: 2 }}>
-        <Paper sx={{ p: 2.5, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 1.5 }}>Actions requises</Typography>
-          <Stack spacing={1}>
-            {actions.map((a) => (
-              <Box
-                key={a.l}
-                component={RouterLink}
-                to={a.to}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.2,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  p: 0.8,
-                  borderRadius: 1.5,
-                  '&:hover': { bgcolor: '#FAFBFC' },
-                }}
-              >
-                <Box
-                  sx={{
-                    minWidth: 26,
-                    height: 26,
-                    borderRadius: 1,
-                    bgcolor: TONE_COLORS[a.tone].soft,
-                    color: TONE_COLORS[a.tone].text,
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
-                  {a.n}
-                </Box>
-                <Typography sx={{ fontSize: 12.5, flex: 1 }}>{a.l}</Typography>
-                <Typography sx={{ fontSize: 12, color: '#2E86C1' }}>Voir →</Typography>
-              </Box>
-            ))}
-          </Stack>
-        </Paper>
-
-        <Paper sx={{ p: 2.5, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Activité mensuelle</Typography>
-          <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1 }}>
-            Demandes reçues et demandes clôturées · exercice {o?.year ?? year}
-          </Typography>
-          {o && <ActivityChart data={o.monthly} />}
-        </Paper>
-      </Box>
+      <Paper sx={{ p: 2.5, borderRadius: 2, mb: 2 }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Activité mensuelle</Typography>
+        <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1 }}>
+          Demandes reçues et demandes clôturées · exercice {o?.year ?? year}
+        </Typography>
+        {o && <ActivityChart data={o.monthly} />}
+      </Paper>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2 }}>
