@@ -81,6 +81,15 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
       )}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1.5, mb: 3 }}>
+        {/* Indicateur d'ensemble : les dossiers parvenus à la SDAG et qui
+            attendent d'être cotés à un agent de traitement. */}
+        <StatCard
+          label="En attente de cotation"
+          value={overview?.byStatus.PENDING_ASSIGNMENT ?? 0}
+          sub="dossiers reçus à la SDAG"
+          subColor={overview?.byStatus.PENDING_ASSIGNMENT ? '#D35400' : undefined}
+        />
+        {/* Indicateur personnel : ce que l'utilisateur doit arbitrer lui-même. */}
         <StatCard
           label="En attente de votre avis"
           value={overview?.awaitingMyReview ?? 0}
@@ -88,8 +97,7 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
           subColor={overview?.awaitingMyReview ? '#D35400' : undefined}
         />
         <StatCard label="En circuit" value={overview?.inCircuit ?? 0} sub="dossiers en cours" />
-        <StatCard label="Validées" value={overview?.byStatus.APPROVED ?? 0} sub={`exercice ${overview?.year ?? ''}`} />
-        <StatCard label="Total transmis" value={overview?.total ?? 0} sub={`exercice ${overview?.year ?? ''}`} />
+        <StatCard label="Signées" value={overview?.byStatus.APPROVED ?? 0} sub={`exercice ${overview?.year ?? ''}`} />
       </Box>
 
       <Paper sx={{ borderRadius: 2, mb: 3 }}>

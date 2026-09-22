@@ -31,7 +31,7 @@ export function SdagPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box>
           <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72' }}>
-            SDAG — Réception & Traitement
+            SDAG - Réception & Traitement
           </Typography>
           <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
             {user?.role === 'AGENT_TRAITEMENT_SDAG'
@@ -62,7 +62,7 @@ export function SdagPage() {
                   <StatusBadge status={r.status} />
                 </Box>
                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
-                  {r.employee.firstName} {r.employee.lastName} — {r.employee.organizationUnit?.name} ·{' '}
+                  {r.employee.firstName} {r.employee.lastName} - {r.employee.organizationUnit?.name} ·{' '}
                   {REQUEST_TYPE_LABELS[r.type]} · {r.calculatedDays} jour(s)
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>

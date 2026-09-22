@@ -42,8 +42,56 @@ export async function listAdminEmployees() {
   return data;
 }
 
-export async function listAdminUsers(params?: { search?: string; role?: Role }) {
-  const { data } = await apiClient.get<{ items: AdminUser[]; total: number }>('/admin/users', { params });
+export type AdminUserSortField = 'name' | 'matricule' | 'role' | 'unit' | 'hireDate';
+
+export interface ListAdminUsersParams {
+  search?: string;
+  role?: Role;
+  status?: 'CIVIL_SERVANT' | 'LABOUR_CODE';
+  organizationUnitId?: string;
+  sortBy?: AdminUserSortField;
+  sortDir?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export async function listAdminUsers(params?: ListAdminUsersParams) {
+  const { data } = await apiClient.get<{
+    items: AdminUser[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>('/admin/users', { params });
+  return data;
+}
+
+// Mise à jour du fichier personnel depuis un classeur Excel. L'import est
+// idempotent : il crée ce qui manque, met à jour ce qui a changé, et ne
+// supprime rien.
+export interface PersonnelImportReport {
+  sheet: string;
+  totalRows: number;
+  importedEmployees: number;
+  createdEmployees: number;
+  updatedEmployees: number;
+  createdUsers: number;
+  updatedUsers: number;
+  organizationUnits: number;
+  roleChanges: { matricule: string; name: string; from: string; to: string }[];
+  skipped: { row: number; matricule: string; name: string; poste: string; structure: string; reason: string }[];
+  unresolvedSupervisors: { matricule: string; name: string; level: number; reference: string }[];
+  withoutHierarchy: { matricule: string; name: string; poste: string }[];
+  codeCollisions: { code: string; keptFor: string; renamedTo: string; unit: string }[];
+}
+
+export async function importPersonnelFile(file: File, onProgress?: (pct: number) => void) {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await apiClient.post<PersonnelImportReport>('/admin/personnel/import', form, {
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+    },
+  });
   return data;
 }
 

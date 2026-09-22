@@ -27,7 +27,8 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   // No longer reachable: the agent de traitement now decides directly.
   // Kept for dossiers that went through the previous circuit.
   RETURNED_TO_SDAG_DIRECTOR: 'En attente de décision SDAG (ancien circuit)',
-  APPROVED: 'Approuvée',
+  // Une décision validée est matérialisée par un document signé.
+  APPROVED: 'Signée',
   REJECTED: 'Rejetée',
 };
 
@@ -53,12 +54,12 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   return new Date(iso).toLocaleString('fr-FR', {
     day: '2-digit',
     month: '2-digit',

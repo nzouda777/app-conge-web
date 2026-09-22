@@ -74,7 +74,7 @@ export function EmployeeHistoryPanel() {
             onInputChange={(_, v) => setSearch(v)}
             loading={isFetching}
             isOptionEqualToValue={(a, b) => a.id === b.id}
-            getOptionLabel={(e) => `${e.firstName} ${e.lastName} — ${e.matricule}`}
+            getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.matricule}`}
             noOptionsText={
               search.trim().length < 2 ? 'Saisissez au moins 2 caractères…' : 'Aucun agent trouvé.'
             }
@@ -195,7 +195,7 @@ export function EmployeeHistoryPanel() {
                   {history.items.map((r) => (
                     <TableRow key={r.id} hover>
                       <TableCell sx={{ fontSize: 11.5, fontFamily: 'monospace' }}>
-                        {r.reference ?? '—'}
+                        {r.reference ?? '-'}
                       </TableCell>
                       <TableCell sx={{ fontSize: 12.5 }}>{REQUEST_TYPE_LABELS[r.type]}</TableCell>
                       <TableCell sx={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
@@ -204,7 +204,7 @@ export function EmployeeHistoryPanel() {
                           : `${formatDate(r.startDate)} → ${formatDate(r.endDate)}`}
                       </TableCell>
                       <TableCell sx={{ fontSize: 12.5 }}>
-                        {r.calculatedDays ? `${r.calculatedDays} j` : '—'}
+                        {r.calculatedDays ? `${r.calculatedDays} j` : '-'}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={r.status} />

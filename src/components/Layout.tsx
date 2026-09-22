@@ -18,7 +18,6 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
@@ -74,20 +73,26 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems: { label: string; icon: ReactNode; to: string; roles?: string[] }[] =
     user.role === 'ADMIN'
       ? [
-          { label: "Vue d'ensemble", icon: <InsightsIcon />, to: '/vue-ensemble' },
+          { label: 'Tableau de bord', icon: <InsightsIcon />, to: '/vue-ensemble' },
           { label: 'Utilisateurs', icon: <PeopleIcon />, to: '/admin' },
           { label: 'Demandes', icon: <ListAltIcon />, to: '/admin/requests' },
           { label: 'Décisions ministérielles', icon: <GavelOutlinedIcon />, to: '/admin/decisions' },
         ]
+      : user.role === 'DIRECTEUR_GENERAL'
+      ? [
+          // Le Directeur Général ne dépose pas de demande : pas d'espace
+          // personnel, son tableau de bord est la vue d'ensemble.
+          { label: 'Tableau de bord', icon: <InsightsIcon />, to: '/dashboard' },
+          { label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' },
+          { label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' },
+        ]
       : [
-          { label: 'Tableau de bord', icon: <DashboardIcon />, to: '/dashboard' },
-          { label: 'Mes demandes', icon: <AssignmentIcon />, to: '/requests' },
-          // Every DGB staff member — whatever their role — can file a
-          // request. The Directeur Général is the one exception: he reviews,
-          // he does not request.
-          ...(user.role === 'DIRECTEUR_GENERAL'
-            ? []
-            : [{ label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' }]),
+          // « Mon espace » réunit le tableau de bord personnel et la liste des
+          // demandes : c'est le même sujet, les demandes de l'utilisateur.
+          { label: 'Mon espace', icon: <AssignmentIcon />, to: '/dashboard' },
+          // Tout le personnel peut déposer une demande. Le Directeur Général
+          // est la seule exception, et il a sa propre branche plus haut.
+          { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' },
           // Shown to whoever actually has people reporting to them — a Chef de
           // Service, a Sous-Directeur, the DG — rather than to one fixed role.
           ...(user.hasSubordinates || user.role === 'TEST_INTEGRAL'
@@ -101,8 +106,10 @@ export function Layout({ children }: { children: ReactNode }) {
           },
           // Le Directeur Général l'a déjà comme tableau de bord ; cette entrée
           // est là pour le Sous-Directeur SDAG, qui a le sien.
+          // Vue d'ensemble de toute la Direction Générale, par opposition à
+          // « Mon espace » qui ne porte que sur les demandes de l'utilisateur.
           {
-            label: "Vue d'ensemble",
+            label: 'Tableau de bord',
             icon: <InsightsIcon />,
             to: '/vue-ensemble',
             roles: ['SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL'],
@@ -217,10 +224,15 @@ export function Layout({ children }: { children: ReactNode }) {
               component="img"
               src="/icon-dgb-request.svg"
               alt="DGB Request"
-              sx={{ width: 28, height: 28, borderRadius: 1, display: { xs: 'block', lg: 'none' } }}
+              sx={{ width: 34, height: 34, borderRadius: 1.2, display: { xs: 'block', lg: 'none' } }}
             />
-            <Typography sx={{ fontWeight: 700, color: '#1B4F72', fontSize: 15, display: { xs: 'block', lg: 'none' } }}>
-              DGB Request
+            {/* « DGB » reprend le vert, le rouge et l'or du logo de la barre
+                latérale, pour que la marque soit la même partout. */}
+            <Typography sx={{ fontWeight: 700, fontSize: 17, display: { xs: 'block', lg: 'none' } }}>
+              <Box component="span" sx={{ color: '#4CB07E' }}>D</Box>
+              <Box component="span" sx={{ color: '#E2565B' }}>G</Box>
+              <Box component="span" sx={{ color: '#EFC03A' }}>B</Box>
+              <Box component="span" sx={{ color: '#1B4F72', fontWeight: 500, ml: 0.7 }}>Request</Box>
             </Typography>
             <Box sx={{ flex: 1 }} />
             <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)}>

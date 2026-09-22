@@ -107,7 +107,7 @@ export function LoginPage() {
           </Typography>
         </Paper>
         <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 11, color: '#95A5A6' }}>
-          Système sécurisé — Usage strictement réservé au personnel DGB
+          Système sécurisé - Usage strictement réservé au personnel DGB
         </Typography>
       </Box>
     </Box>

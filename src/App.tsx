@@ -41,7 +41,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      {/* Any DGB staff member may file a request — every non-ADMIN role. */}
+      {/* Any DGB staff member may file a request - every non-ADMIN role. */}
       <Route
         path="/requests/new"
         element={

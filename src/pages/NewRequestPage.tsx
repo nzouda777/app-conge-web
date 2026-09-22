@@ -226,7 +226,7 @@ export function NewRequestPage() {
         Nouvelle demande
       </Typography>
       <Typography sx={{ fontSize: 13, color: '#5D6D7E', mb: 3 }}>
-        Remplissez le formulaire — les champs marqués * sont obligatoires
+        Remplissez le formulaire - les champs marqués * sont obligatoires
       </Typography>
 
       <Paper sx={{ borderRadius: 2 }}>
@@ -253,8 +253,8 @@ export function NewRequestPage() {
                 Votre supérieur hiérarchique :{' '}
                 <strong>
                   {user?.employee?.manager
-                    ? `${user.employee.manager.firstName} ${user.employee.manager.lastName}`
-                    : 'non défini — contactez la SDAG'}
+                    ? `${user.employee.manager.position}, ${user.employee.manager.firstName} ${user.employee.manager.lastName}`
+                    : 'non défini - contactez la SDAG'}
                 </strong>
               </Typography>
               <Controller
@@ -379,7 +379,7 @@ export function NewRequestPage() {
                         <TextField
                           {...field}
                           type="date"
-                          label="Congé précédent — du"
+                          label="Congé précédent - du"
                           fullWidth
                           slotProps={{ inputLabel: { shrink: true } }}
                         />
@@ -452,7 +452,7 @@ export function NewRequestPage() {
                         .filter((e) => e.id !== user?.employeeId)
                         .map((e) => (
                           <MenuItem key={e.id} value={e.id}>
-                            {e.firstName} {e.lastName} — {e.position}
+                            {e.firstName} {e.lastName} - {e.position}
                           </MenuItem>
                         ))}
                     </TextField>
@@ -460,7 +460,7 @@ export function NewRequestPage() {
                 />
               )}
 
-              {/* Justificatif — shown only for the request types that require one. */}
+              {/* Justificatif - shown only for the request types that require one. */}
               {attachmentsRequired && (
                 <Stack spacing={1}>
                   <Alert severity="info">
@@ -546,7 +546,7 @@ export function NewRequestPage() {
                       Note n°{draft.repriseNoteNumber || '………'}
                       {draft.repriseNoteDate ? ` du ${formatDate(draft.repriseNoteDate)}` : ''}
                       {draft.reprisePriorType
-                        ? ` — ${REPRISE_PRIOR_TYPE_OPTIONS.find((o) => o.value === draft.reprisePriorType)?.label ?? draft.reprisePriorType}`
+                        ? ` - ${REPRISE_PRIOR_TYPE_OPTIONS.find((o) => o.value === draft.reprisePriorType)?.label ?? draft.reprisePriorType}`
                         : ''}
                       {draft.reprisePriorStartDate || draft.reprisePriorEndDate
                         ? ` (du ${draft.reprisePriorStartDate ? formatDate(draft.reprisePriorStartDate) : '………'} au ${draft.reprisePriorEndDate ? formatDate(draft.reprisePriorEndDate) : '………'})`
@@ -556,7 +556,7 @@ export function NewRequestPage() {
                 </Stack>
               ) : (
                 <Typography sx={{ fontSize: 13 }}>
-                  Du {formatDate(draft.startDate)} au {formatDate(draft.endDate)} — {draft.calculatedDays} jour(s)
+                  Du {formatDate(draft.startDate)} au {formatDate(draft.endDate)} - {draft.calculatedDays} jour(s)
                 </Typography>
               )}
               {draft.durationWarnings && draft.durationWarnings.length > 0 && (
@@ -570,7 +570,7 @@ export function NewRequestPage() {
               <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
                 Cette demande sera transmise à : <strong>
                   {user?.employee?.manager
-                    ? `${user.employee.manager.firstName} ${user.employee.manager.lastName}`
+                    ? `${user.employee.manager.position}, ${user.employee.manager.firstName} ${user.employee.manager.lastName}`
                     : 'votre responsable hiérarchique'}
                 </strong>{' '}
                 pour avis, avant transmission à la SDAG.

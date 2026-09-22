@@ -257,7 +257,7 @@ export function RequestDetailPage() {
             </Typography>
             <Typography sx={{ fontSize: 18, fontWeight: 600, color: '#1B4F72' }}>
               {REQUEST_TYPE_LABELS[request.type]}
-              {request.permissionSubType ? ` — ${PERMISSION_SUBTYPE_LABELS[request.permissionSubType]}` : ''}
+              {request.permissionSubType ? ` - ${PERMISSION_SUBTYPE_LABELS[request.permissionSubType]}` : ''}
             </Typography>
             <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
               {request.employee.firstName} {request.employee.lastName} · {request.employee.organizationUnit?.name}
@@ -462,7 +462,7 @@ export function RequestDetailPage() {
                 )}
                 {assigneeOptions.map((emp) => (
                   <MenuItem key={emp.id} value={emp.id}>
-                    {emp.firstName} {emp.lastName} — {emp.position}
+                    {emp.firstName} {emp.lastName} - {emp.position}
                   </MenuItem>
                 ))}
               </TextField>

@@ -231,7 +231,7 @@ function ManageAttachmentsDialog({
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
-        Pièces jointes — {request.reference ?? '(brouillon)'}
+        Pièces jointes - {request.reference ?? '(brouillon)'}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={1.5} sx={{ mt: 1 }}>

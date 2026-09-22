@@ -46,7 +46,7 @@ export function ManagerRequestsPage() {
                   {r.reference}
                 </Typography>
                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
-                  {r.employee.firstName} {r.employee.lastName} — {REQUEST_TYPE_LABELS[r.type]}
+                  {r.employee.firstName} {r.employee.lastName} - {REQUEST_TYPE_LABELS[r.type]}
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)} · {r.calculatedDays} jour(s)
@@ -74,7 +74,7 @@ export function ManagerRequestsPage() {
             >
               <Box sx={{ flex: 1 }}>
                 <Typography sx={{ fontSize: 13 }}>
-                  {r.employee.firstName} {r.employee.lastName} — {REQUEST_TYPE_LABELS[r.type]}
+                  {r.employee.firstName} {r.employee.lastName} - {REQUEST_TYPE_LABELS[r.type]}
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}

@@ -120,7 +120,7 @@ export function MyRequestsPage() {
                 </Box>
                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
                   {REQUEST_TYPE_LABELS[r.type]}
-                  {r.calculatedDays !== null ? ` — ${r.calculatedDays} jour(s)` : ''}
+                  {r.calculatedDays !== null ? ` - ${r.calculatedDays} jour(s)` : ''}
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}

@@ -19,7 +19,9 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
+  TableSortLabel,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -32,6 +34,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import KeyIcon from '@mui/icons-material/VpnKey';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
   createAdminUser,
   deactivateAdminUser,
@@ -49,6 +52,8 @@ import { getApiErrorMessage } from '../../api/client';
 import { ROLE_LABELS } from '../../types/labels';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { AdminUser, Role } from '../../types/api';
+import type { AdminUserSortField } from '../../api/admin';
+import { PersonnelImportDialog } from './PersonnelImportDialog';
 
 const ROLES: Role[] = [
   'AGENT',
@@ -62,6 +67,14 @@ const ROLES: Role[] = [
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  // Plus de 1500 comptes : la liste est paginée et triable côté serveur.
+  const [roleFilter, setRoleFilter] = useState<Role | ''>('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'CIVIL_SERVANT' | 'LABOUR_CODE'>('');
+  const [sortBy, setSortBy] = useState<AdminUserSortField>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [importOpen, setImportOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
@@ -69,9 +82,30 @@ export function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
 
   const { data: users, isLoading, error: listError } = useQuery({
-    queryKey: ['admin', 'users', search],
-    queryFn: () => listAdminUsers({ search: search || undefined }),
+    queryKey: ['admin', 'users', search, roleFilter, statusFilter, sortBy, sortDir, page, pageSize],
+    queryFn: () =>
+      listAdminUsers({
+        search: search || undefined,
+        role: roleFilter || undefined,
+        status: statusFilter || undefined,
+        sortBy,
+        sortDir,
+        page: page + 1,
+        pageSize,
+      }),
+    placeholderData: (prev) => prev,
   });
+
+  // Un changement de filtre ou de tri ramène à la première page : rester sur
+  // la page 7 d'un résultat qui n'en compte plus que 2 afficherait du vide.
+  function applySort(field: AdminUserSortField) {
+    if (field === sortBy) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortBy(field);
+      setSortDir('asc');
+    }
+    setPage(0);
+  }
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -123,23 +157,101 @@ export function AdminUsersPage() {
       )}
 
       <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-        <TextField
-          size="small"
-          label="Rechercher (nom, matricule, email)"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ width: 340 }}
-        />
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ alignItems: { md: 'center' } }}>
+          <TextField
+            size="small"
+            label="Rechercher (nom, matricule, email)"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
+            sx={{ flex: 1, minWidth: 260 }}
+          />
+          <TextField
+            select
+            size="small"
+            label="Rôle"
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value as Role | '');
+              setPage(0);
+            }}
+            sx={{ minWidth: 210 }}
+          >
+            <MenuItem value="">Tous</MenuItem>
+            {ROLES.map((r) => (
+              <MenuItem key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Statut"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as '' | 'CIVIL_SERVANT' | 'LABOUR_CODE');
+              setPage(0);
+            }}
+            sx={{ minWidth: 190 }}
+          >
+            <MenuItem value="">Tous</MenuItem>
+            <MenuItem value="CIVIL_SERVANT">Fonctionnaire</MenuItem>
+            <MenuItem value="LABOUR_CODE">Code du travail</MenuItem>
+          </TextField>
+          <Button
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            onClick={() => setImportOpen(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Charger un fichier personnel
+          </Button>
+        </Stack>
       </Paper>
 
       <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Agent</TableCell>
-              <TableCell>Matricule</TableCell>
-              <TableCell>Service</TableCell>
-              <TableCell>Rôle</TableCell>
+              <TableCell sortDirection={sortBy === 'name' ? sortDir : false}>
+                <TableSortLabel
+                  active={sortBy === 'name'}
+                  direction={sortBy === 'name' ? sortDir : 'asc'}
+                  onClick={() => applySort('name')}
+                >
+                  Agent
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sortDirection={sortBy === 'matricule' ? sortDir : false}>
+                <TableSortLabel
+                  active={sortBy === 'matricule'}
+                  direction={sortBy === 'matricule' ? sortDir : 'asc'}
+                  onClick={() => applySort('matricule')}
+                >
+                  Matricule
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sortDirection={sortBy === 'unit' ? sortDir : false}>
+                <TableSortLabel
+                  active={sortBy === 'unit'}
+                  direction={sortBy === 'unit' ? sortDir : 'asc'}
+                  onClick={() => applySort('unit')}
+                >
+                  Service
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sortDirection={sortBy === 'role' ? sortDir : false}>
+                <TableSortLabel
+                  active={sortBy === 'role'}
+                  direction={sortBy === 'role' ? sortDir : 'asc'}
+                  onClick={() => applySort('role')}
+                >
+                  Rôle
+                </TableSortLabel>
+              </TableCell>
               <TableCell>Statut</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -159,7 +271,7 @@ export function AdminUsersPage() {
                   <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>{u.email}</Typography>
                 </TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{u.employee.matricule}</TableCell>
-                <TableCell sx={{ fontSize: 12 }}>{u.employee.organizationUnit?.name ?? '—'}</TableCell>
+                <TableCell sx={{ fontSize: 12 }}>{u.employee.organizationUnit?.name ?? '-'}</TableCell>
                 <TableCell sx={{ fontSize: 12 }}>{ROLE_LABELS[u.role]}</TableCell>
                 <TableCell>
                   <Chip
@@ -209,7 +321,27 @@ export function AdminUsersPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={users?.total ?? 0}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={pageSize}
+          onRowsPerPageChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[25, 50, 100, 200]}
+          labelRowsPerPage="Lignes par page"
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
+        />
       </TableContainer>
+
+      <PersonnelImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={invalidate}
+      />
 
       {createOpen && (
         <CreateUserDialog
@@ -234,7 +366,7 @@ export function AdminUsersPage() {
         title="Supprimer ce compte ?"
         description={
           deleteUser
-            ? `Le compte de ${deleteUser.employee.firstName} ${deleteUser.employee.lastName} (${deleteUser.email}) sera définitivement supprimé. La fiche employé et l'historique de ses demandes sont conservés — seul l'accès à l'application est retiré. Cette action est irréversible.`
+            ? `Le compte de ${deleteUser.employee.firstName} ${deleteUser.employee.lastName} (${deleteUser.email}) sera définitivement supprimé. La fiche employé et l'historique de ses demandes sont conservés - seul l'accès à l'application est retiré. Cette action est irréversible.`
             : ''
         }
         confirmLabel="Supprimer"
@@ -298,7 +430,7 @@ function CreateUserDialog({ onClose, onCreated }: { onClose: () => void; onCreat
           {mode === 'existing' ? (
             <Autocomplete
               options={availableEmployees}
-              getOptionLabel={(e) => `${e.firstName} ${e.lastName} — ${e.matricule}`}
+              getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.matricule}`}
               onChange={(_, value) => setEmployeeId(value?.id ?? '')}
               renderInput={(params) => <TextField {...params} label="Employé (sans compte)" required />}
             />
@@ -344,7 +476,7 @@ function CreateUserDialog({ onClose, onCreated }: { onClose: () => void; onCreat
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            helperText="Communiquez-le à l'agent — il pourra le changer plus tard."
+            helperText="Communiquez-le à l'agent - il pourra le changer plus tard."
           />
         </Stack>
       </DialogContent>
@@ -387,7 +519,7 @@ function EditUserDialog({
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
-        Modifier — {user.employee.firstName} {user.employee.lastName}
+        Modifier - {user.employee.firstName} {user.employee.lastName}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -457,7 +589,7 @@ function ResetPasswordDialog({ user, onClose }: { user: AdminUser; onClose: () =
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
       <DialogTitle>
-        Réinitialiser le mot de passe — {user.employee.firstName} {user.employee.lastName}
+        Réinitialiser le mot de passe - {user.employee.firstName} {user.employee.lastName}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
