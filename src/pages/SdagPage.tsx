@@ -59,7 +59,7 @@ export function SdagPage() {
                   <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
                     {r.reference}
                   </Typography>
-                  <StatusBadge status={r.status} />
+                  <StatusBadge status={r.status} request={r} user={user} />
                 </Box>
                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
                   {r.employee.firstName} {r.employee.lastName} - {r.employee.organizationUnit?.name} ·{' '}

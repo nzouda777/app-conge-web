@@ -168,8 +168,22 @@ export function RequestDetailPage() {
   // a Chef de Service, a Sous-Directeur or the Directeur Général alike — not
   // on holding one particular role. Mirrors the API, which authorises on
   // Employee.managerId (see RequestsService.managerReview).
-  const isRequestManager = request.employee.managerId === user?.employeeId || isTest;
-  const canManagerReview = isRequestManager && request.status === 'PENDING_MANAGER_REVIEW';
+  // L'avis se donne niveau par niveau : seul le supérieur du niveau en cours
+  // peut se prononcer. Se fier à managerId laissait le niveau 1 garder les
+  // boutons pendant tout le parcours et privait les niveaux suivants des
+  // leurs. Repli sur managerId pour les demandes antérieures à la chaîne.
+  const chain = request.employee.supervisors ?? [];
+  const currentLevel = request.currentHierarchyLevel ?? 1;
+  const expectedReviewerId =
+    chain.find((c) => c.level === currentLevel)?.supervisorId ?? request.employee.managerId;
+  const canManagerReview =
+    request.status === 'PENDING_MANAGER_REVIEW' && (expectedReviewerId === user?.employeeId || isTest);
+  // Pour la consultation du document, figurer quelque part dans la chaîne
+  // suffit, quel que soit le niveau.
+  const isRequestManager =
+    isTest ||
+    request.employee.managerId === user?.employeeId ||
+    chain.some((c) => c.supervisorId === user?.employeeId);
   const canAssign =
     (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) && request.status === 'PENDING_ASSIGNMENT';
   // The agent de traitement holding the dossier validates or rejects it
@@ -380,7 +394,7 @@ export function RequestDetailPage() {
               textAlign: { xs: 'left', sm: 'right' },
             }}
           >
-            <StatusBadge status={request.status} />
+            <StatusBadge status={request.status} request={request} user={user} />
             {rejectionComment && (
               <Typography sx={{ fontSize: 12, color: '#C0392B', textAlign: 'inherit' }}>{rejectionComment}</Typography>
             )}
@@ -429,14 +443,16 @@ export function RequestDetailPage() {
                 variant="contained"
                 color="success"
                 startIcon={<CheckCircleIcon />}
+                disabled={managerReviewMutation.isPending}
                 onClick={() => managerReviewMutation.mutate({ decision: 'FAVORABLE' })}
               >
-                Avis favorable
+                {managerReviewMutation.isPending ? 'Enregistrement…' : 'Avis favorable'}
               </Button>
               <Button
                 variant="outlined"
                 color="error"
                 startIcon={<CancelIcon />}
+                disabled={managerReviewMutation.isPending}
                 onClick={() => setRejectDialog('manager')}
               >
                 Avis défavorable
@@ -466,8 +482,12 @@ export function RequestDetailPage() {
                   </MenuItem>
                 ))}
               </TextField>
-              <Button variant="contained" disabled={!assigneeId} onClick={() => assignMutation.mutate()}>
-                Coter
+              <Button
+                variant="contained"
+                disabled={!assigneeId || assignMutation.isPending}
+                onClick={() => assignMutation.mutate()}
+              >
+                {assignMutation.isPending ? 'Cotation…' : 'Coter'}
               </Button>
             </Stack>
           )}
@@ -613,7 +633,7 @@ export function RequestDetailPage() {
           <Button
             variant="contained"
             color="error"
-            disabled={!comment.trim()}
+            disabled={!comment.trim() || managerReviewMutation.isPending || decisionMutation.isPending}
             onClick={() => {
               if (rejectDialog === 'manager') {
                 managerReviewMutation.mutate({ decision: 'DEFAVORABLE', comment });

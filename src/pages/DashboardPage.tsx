@@ -130,7 +130,7 @@ export function DashboardPage() {
                   {r.calculatedDays} jour(s)
                 </Typography>
               )}
-              <StatusBadge status={r.status} />
+              <StatusBadge status={r.status} request={r} user={user} />
             </Box>
           ))}
         </Stack>

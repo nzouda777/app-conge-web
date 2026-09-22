@@ -29,6 +29,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import InsightsIcon from '@mui/icons-material/Insights';
+import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -77,6 +78,7 @@ export function Layout({ children }: { children: ReactNode }) {
           { label: 'Utilisateurs', icon: <PeopleIcon />, to: '/admin' },
           { label: 'Demandes', icon: <ListAltIcon />, to: '/admin/requests' },
           { label: 'Décisions ministérielles', icon: <GavelOutlinedIcon />, to: '/admin/decisions' },
+          { label: 'Délais de traitement', icon: <TimerOutlinedIcon />, to: '/admin/delais' },
         ]
       : user.role === 'DIRECTEUR_GENERAL'
       ? [

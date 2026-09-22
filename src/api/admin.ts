@@ -164,3 +164,23 @@ export async function upsertAnnualLeaveDecision(input: {
   const { data } = await apiClient.put<AnnualLeaveDecision>('/admin/annual-leave-decisions', input);
   return data;
 }
+
+// Délais cibles de traitement, par étape. Une étape absente de la liste n'est
+// pas contrôlée : les indicateurs de retard restent vides.
+export type TargetStage = 'HIERARCHY' | 'ASSIGNMENT' | 'TREATMENT' | 'TOTAL';
+
+export interface ProcessingTarget {
+  stage: TargetStage;
+  days: number;
+  updatedAt: string;
+}
+
+export async function listProcessingTargets() {
+  const { data } = await apiClient.get<ProcessingTarget[]>('/admin/processing-targets');
+  return data;
+}
+
+export async function saveProcessingTargets(targets: { stage: TargetStage; days: number }[]) {
+  const { data } = await apiClient.put<ProcessingTarget[]>('/admin/processing-targets', { targets });
+  return data;
+}

@@ -11,6 +11,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
 import { AdminDecisionsPage } from './pages/admin/AdminDecisionsPage';
+import { AdminTargetsPage } from './pages/admin/AdminTargetsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { OverviewPage } from './pages/OverviewPage';
 
@@ -109,6 +110,14 @@ export default function App() {
         element={
           <ProtectedRoute roles={['ADMIN']}>
             <AdminUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/delais"
+        element={
+          <ProtectedRoute roles={['ADMIN']}>
+            <AdminTargetsPage />
           </ProtectedRoute>
         }
       />

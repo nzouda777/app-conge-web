@@ -80,7 +80,7 @@ export function ManagerRequestsPage() {
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}
                 </Typography>
               </Box>
-              <StatusBadge status={r.status} />
+              <StatusBadge status={r.status} request={r} user={user} />
             </Box>
           ))}
         </Stack>

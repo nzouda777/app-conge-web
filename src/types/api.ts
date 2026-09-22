@@ -37,13 +37,35 @@ export type RequestStatus =
 
 // Aggregate figures for the Directeur Général's dashboard: counts only, no
 // personal detail. Drafts are excluded — they are not yet requests.
+export type TargetStage = 'HIERARCHY' | 'ASSIGNMENT' | 'TREATMENT' | 'TOTAL';
+
 export interface RequestsOverview {
   year: number;
   total: number;
   inCircuit: number;
   awaitingMyReview: number;
+  newToday: number;
+  stalled: { thresholdDays: number; count: number };
   byStatus: Partial<Record<RequestStatus, number>>;
   byType: Partial<Record<RequestType, number>>;
+  monthly: { month: number; received: number; closed: number }[];
+  // Moyennes en jours ; null quand aucun dossier n'a encore franchi l'étape.
+  delays: {
+    total: number | null;
+    hierarchy: number | null;
+    assignment: number | null;
+    treatment: number | null;
+    decidedCount: number;
+  };
+  agentLoad: { employeeId: string; name: string; count: number }[];
+  opinions: { favourable: number; unfavourable: number };
+  // Délais cibles saisis par l'administration. Une étape absente n'est pas
+  // contrôlée.
+  targets: Partial<Record<TargetStage, number>>;
+  // null tant qu'aucune cible n'est saisie : zéro se lirait à tort comme
+  // « aucun retard ».
+  overdue: number | null;
+  onTimeShare: number | null;
 }
 
 // Historique d'un agent tel que renvoyé par /requests/employee/:id/history.
@@ -65,6 +87,13 @@ export interface OrganizationUnit {
   parentId: string | null;
 }
 
+// Un maillon de la chaîne de validation d'un agent.
+export interface EmployeeSupervisor {
+  id: string;
+  level: number;
+  supervisorId: string;
+}
+
 export interface Employee {
   id: string;
   matricule: string;
@@ -76,6 +105,9 @@ export interface Employee {
   managerId: string | null;
   organizationUnit?: OrganizationUnit;
   manager?: Employee | null;
+  // Chaîne de validation, par niveau croissant. Absente des charges utiles
+  // allégées (sélecteurs d'agents, par exemple).
+  supervisors?: EmployeeSupervisor[];
 }
 
 export interface AuthUser {
@@ -144,6 +176,9 @@ export interface StatusHistoryEntry {
 
 export interface LeaveRequest {
   id: string;
+  // Niveau de la chaîne dont l'avis est attendu, tant que la demande est en
+  // attente d'avis hiérarchique.
+  currentHierarchyLevel?: number | null;
   reference: string | null;
   type: RequestType;
   permissionSubType: PermissionSubType | null;
