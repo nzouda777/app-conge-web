@@ -1,7 +1,7 @@
 import { Box } from '@mui/material';
 import type { AuthUser, LeaveRequest, RequestStatus } from '../types/api';
 import { REQUEST_STATUS_LABELS } from '../types/labels';
-import { TONE_COLORS, requestTone, statusTone, type Tone } from '../theme/statusColors';
+import { TONE_COLORS, actionLabel, requestTone, statusTone, type Tone } from '../theme/statusColors';
 
 // Badge de statut. Passé `request` et `user`, il devient contextuel : orange
 // quand l'utilisateur connecté a une action à faire sur ce dossier. Utilisé
@@ -19,6 +19,9 @@ export function StatusBadge({
 }) {
   const resolved: Tone = tone ?? (request ? requestTone(request, user) : statusTone(status));
   const c = TONE_COLORS[resolved];
+  // Quand c'est à l'utilisateur d'agir, le badge annonce l'acte à poser
+  // plutôt que l'étape du circuit.
+  const text = (request && actionLabel(request, user)) ?? REQUEST_STATUS_LABELS[status];
   return (
     <Box
       component="span"
@@ -36,7 +39,7 @@ export function StatusBadge({
         whiteSpace: 'nowrap',
       }}
     >
-      {REQUEST_STATUS_LABELS[status]}
+      {text}
     </Box>
   );
 }

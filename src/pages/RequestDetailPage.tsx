@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -63,6 +63,9 @@ export function RequestDetailPage() {
   const [rejectDialog, setRejectDialog] = useState<'manager' | 'sdag' | null>(null);
   const [comment, setComment] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  // La liste des agents de traitement peut être longue : la recherche part au
+  // serveur dès 2 caractères, comme ailleurs dans l'application.
+  const [assigneeSearch, setAssigneeSearch] = useState('');
   const [observation, setObservation] = useState('');
 
   const requestId = id!;
@@ -72,8 +75,9 @@ export function RequestDetailPage() {
   });
 
   const { data: employees } = useQuery({
-    queryKey: ['employees', 'sdag-picker'],
-    queryFn: () => listEmployees({ role: 'AGENT_TRAITEMENT_SDAG' }),
+    queryKey: ['employees', 'sdag-picker', assigneeSearch],
+    queryFn: () =>
+      listEmployees({ role: 'AGENT_TRAITEMENT_SDAG', search: assigneeSearch || undefined }),
     enabled:
       (user?.role === 'SOUS_DIRECTEUR_SDAG' || user?.role === 'TEST_INTEGRAL') &&
       request?.status === 'PENDING_ASSIGNMENT',
@@ -461,31 +465,49 @@ export function RequestDetailPage() {
           )}
 
           {canAssign && (
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-              <TextField
-                select
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'flex-start' } }}>
+              <Autocomplete
+                sx={{ flex: 1, minWidth: 300 }}
                 size="small"
-                label="Agent de traitement"
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-                sx={{ minWidth: 260 }}
-              >
-                {!employees && assigneeOptions.length === 0 && <MenuItem value="">Chargement…</MenuItem>}
-                {employees && assigneeOptions.length === 0 && (
-                  <MenuItem value="" disabled>
-                    Aucun agent de traitement SDAG actif
-                  </MenuItem>
+                options={assigneeOptions}
+                value={assigneeOptions.find((e) => e.id === assigneeId) ?? null}
+                onChange={(_, v) => setAssigneeId(v?.id ?? '')}
+                onInputChange={(_, v) => setAssigneeSearch(v)}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.position}`}
+                // L'auteur de la demande reste visible mais non sélectionnable :
+                // le lui coter mènerait à une impasse, nul ne décidant sur sa
+                // propre demande. Le serveur refuse aussi ce cas.
+                getOptionDisabled={(e) => e.id === request.employeeId}
+                renderOption={(props, e) => {
+                  const isRequester = e.id === request.employeeId;
+                  return (
+                    <li {...props} key={e.id}>
+                      <Box>
+                        <Typography sx={{ fontSize: 13 }}>
+                          {e.firstName} {e.lastName}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11, color: isRequester ? '#C0392B' : '#5D6D7E' }}>
+                          {isRequester ? "Auteur de la demande - ne peut pas en être chargé" : e.position}
+                        </Typography>
+                      </Box>
+                    </li>
+                  );
+                }}
+                noOptionsText={employees ? 'Aucun agent de traitement SDAG actif' : 'Chargement…'}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Agent de traitement"
+                    helperText="Recherchez par nom ou matricule. L'auteur de la demande ne peut pas en être chargé."
+                  />
                 )}
-                {assigneeOptions.map((emp) => (
-                  <MenuItem key={emp.id} value={emp.id}>
-                    {emp.firstName} {emp.lastName} - {emp.position}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
               <Button
                 variant="contained"
                 disabled={!assigneeId || assignMutation.isPending}
                 onClick={() => assignMutation.mutate()}
+                sx={{ mt: { sm: 0.2 } }}
               >
                 {assignMutation.isPending ? 'Cotation…' : 'Coter'}
               </Button>

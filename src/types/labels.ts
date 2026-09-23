@@ -18,16 +18,18 @@ export const PERMISSION_SUBTYPE_LABELS: Record<PermissionSubType, string> = {
   AUTRE: 'Autre motif (permission motivée)',
 };
 
+// Libellés vus par les personnes que le dossier ne concerne pas directement :
+// ils décrivent où en est la demande, sans jargon interne. Quand c'est à vous
+// d'agir, le badge affiche l'action à mener (voir ACTION_LABELS).
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   DRAFT: 'Brouillon',
-  PENDING_MANAGER_REVIEW: "En attente d'avis du responsable",
-  MANAGER_REJECTED: 'Avis défavorable du responsable',
-  PENDING_ASSIGNMENT: 'Transmise à la SDAG',
-  ASSIGNED: 'En cours de traitement SDAG',
-  // No longer reachable: the agent de traitement now decides directly.
-  // Kept for dossiers that went through the previous circuit.
-  RETURNED_TO_SDAG_DIRECTOR: 'En attente de décision SDAG (ancien circuit)',
-  // Une décision validée est matérialisée par un document signé.
+  PENDING_MANAGER_REVIEW: "En attente d'avis hiérarchique",
+  MANAGER_REJECTED: 'Avis défavorable',
+  PENDING_ASSIGNMENT: 'En attente de cotation',
+  ASSIGNED: 'En cours de traitement',
+  // Plus atteignable : l'agent de traitement décide désormais lui-même.
+  // Conservé pour les dossiers passés par l'ancien circuit.
+  RETURNED_TO_SDAG_DIRECTOR: 'En attente de décision (ancien circuit)',
   APPROVED: 'Signée',
   REJECTED: 'Rejetée',
 };

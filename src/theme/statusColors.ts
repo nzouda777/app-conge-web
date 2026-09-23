@@ -77,3 +77,19 @@ export function requiresActionFrom(request: RequestLike, user: AuthUser | null |
 export function requestTone(request: RequestLike, user: AuthUser | null | undefined): Tone {
   return requiresActionFrom(request, user) ? 'action' : statusTone(request.status);
 }
+
+// Ce que l'utilisateur doit faire, quand c'est à lui. Ce texte REMPLACE le
+// libellé de statut sur le badge : un dossier orange doit dire l'acte à poser,
+// pas l'endroit où il se trouve. Deux personnes peuvent donc lire deux textes
+// différents sur le même dossier - c'est voulu, elles n'ont pas le même rôle
+// à y jouer.
+const ACTION_LABELS: Partial<Record<RequestStatus, string>> = {
+  PENDING_MANAGER_REVIEW: 'Votre avis est attendu',
+  PENDING_ASSIGNMENT: 'À coter',
+  ASSIGNED: 'À traiter et signer',
+};
+
+export function actionLabel(request: RequestLike, user: AuthUser | null | undefined): string | null {
+  if (!requiresActionFrom(request, user)) return null;
+  return ACTION_LABELS[request.status] ?? null;
+}
