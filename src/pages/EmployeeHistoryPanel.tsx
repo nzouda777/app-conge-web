@@ -3,17 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Autocomplete,
   Box,
-  Button,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -49,47 +44,42 @@ export function EmployeeHistoryPanel() {
   });
 
   return (
-    <Paper sx={{ borderRadius: 2, mt: 1.5 }}>
-      <Box sx={{ p: 2, borderBottom: '1px solid #f0f1f3' }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>
-          Historique par agent
+    <Paper sx={{ borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 2.5, pb: 1.5 }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Historique par agent</Typography>
+        <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mt: 0.3, mb: 2 }}>
+          Recherchez un agent par son nom ou son matricule
         </Typography>
-        <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mt: 0.3 }}>
-          Recherchez un agent par son nom ou son matricule pour consulter ses demandes.
-        </Typography>
-      </Box>
 
-      <Box sx={{ p: 2.5 }}>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1.5}
-          sx={{ alignItems: { md: 'center' }, mb: selected ? 2.5 : 0 }}
-        >
-          <Autocomplete
-            sx={{ flex: 1, minWidth: 260 }}
-            size="small"
-            options={employees?.items ?? []}
-            value={selected}
-            onChange={(_, v) => setSelected(v)}
-            onInputChange={(_, v) => setSearch(v)}
-            loading={isFetching}
-            isOptionEqualToValue={(a, b) => a.id === b.id}
-            getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.matricule}`}
-            noOptionsText={
-              search.trim().length < 2 ? 'Saisissez au moins 2 caractères…' : 'Aucun agent trouvé.'
-            }
-            renderInput={(params) => <TextField {...params} label="Agent (nom ou matricule)" />}
-          />
+        <Autocomplete
+          fullWidth
+          size="small"
+          options={employees?.items ?? []}
+          value={selected}
+          onChange={(_, v) => setSelected(v)}
+          onInputChange={(_, v) => setSearch(v)}
+          loading={isFetching}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.matricule}`}
+          noOptionsText={
+            search.trim().length < 2 ? 'Saisissez au moins 2 caractères…' : 'Aucun agent trouvé.'
+          }
+          renderInput={(params) => <TextField {...params} label="Agent" />}
+        />
 
-          {selected && (
-            <>
+        {selected && (
+          <>
+            {/* Filtres et édition de la fiche sur une seule ligne, sous la
+                recherche : en colonne, les empiler ferait descendre la liste
+                trop bas. */}
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'center' }}>
               <TextField
                 select
                 size="small"
                 label="Exercice"
                 value={year}
                 onChange={(e) => setYear(e.target.value === '' ? '' : Number(e.target.value))}
-                sx={{ minWidth: 140 }}
+                sx={{ width: 110 }}
               >
                 <MenuItem value="">Tous</MenuItem>
                 {history?.availableYears.map((y) => (
@@ -104,121 +94,111 @@ export function EmployeeHistoryPanel() {
                 label="Type"
                 value={type}
                 onChange={(e) => setType(e.target.value as RequestType | '')}
-                sx={{ minWidth: 200 }}
+                sx={{ flex: 1, minWidth: 0 }}
               >
-                <MenuItem value="">Toutes</MenuItem>
+                <MenuItem value="">Tous</MenuItem>
                 {(Object.keys(REQUEST_TYPE_LABELS) as RequestType[]).map((t) => (
                   <MenuItem key={t} value={t}>
                     {REQUEST_TYPE_LABELS[t]}
                   </MenuItem>
                 ))}
               </TextField>
-              <Button
-                component="a"
-                href={employeeHistoryDocumentUrl(selected.id, filters)}
-                target="_blank"
-                rel="noreferrer"
-                size="small"
-                variant="outlined"
-                startIcon={<DescriptionIcon />}
-                sx={{ whiteSpace: 'nowrap' }}
-              >
-                Éditer la fiche
-              </Button>
-            </>
-          )}
-        </Stack>
+              <Tooltip title="Éditer la fiche d'historique">
+                <IconButton
+                  component="a"
+                  href={employeeHistoryDocumentUrl(selected.id, filters)}
+                  target="_blank"
+                  rel="noreferrer"
+                  size="small"
+                  sx={{ border: '1px solid #E0E4E8', borderRadius: 1.5 }}
+                >
+                  <DescriptionIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
 
-        {!selected && (
-          <Typography sx={{ fontSize: 13, color: '#5D6D7E', mt: 2 }}>
-            Aucun agent sélectionné.
-          </Typography>
+            {history && (
+              <Box sx={{ mt: 1.5 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>
+                  {history.employee.firstName} {history.employee.lastName}
+                </Typography>
+                <Typography sx={{ fontSize: 11.5, color: '#5D6D7E' }}>
+                  {history.employee.matricule} · {history.employee.position}
+                </Typography>
+              </Box>
+            )}
+          </>
         )}
+      </Box>
 
-        {selected && isLoading && <Typography sx={{ fontSize: 13 }}>Chargement…</Typography>}
+      {/* Zone déroulante : la carte garde la même hauteur que le graphique
+          voisin, quel que soit le nombre de demandes. */}
+      <Box sx={{ flex: 1, minHeight: 190, maxHeight: 300, overflowY: 'auto', px: 2.5, pb: 2 }}>
+        {!selected && (
+          <Typography sx={{ fontSize: 12.5, color: '#5D6D7E' }}>Aucun agent sélectionné.</Typography>
+        )}
+        {selected && isLoading && <Typography sx={{ fontSize: 12.5 }}>Chargement…</Typography>}
 
         {selected && history && (
           <>
-            <Box sx={{ mb: 2 }}>
-              <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#1B4F72' }}>
-                {history.employee.firstName} {history.employee.lastName}
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
-                {history.employee.matricule} · {history.employee.position}
-                {history.employee.organizationUnit ? ` · ${history.employee.organizationUnit.name}` : ''}
-              </Typography>
-            </Box>
-
             {history.totals.length > 0 && (
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ flexWrap: 'wrap', gap: 1, mb: 2 }}
-              >
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.8, mb: 1.5 }}>
                 {history.totals.map((t) => (
-                  <Box
-                    key={t.type}
-                    sx={{ px: 1.5, py: 1, borderRadius: 1.5, bgcolor: '#F7F9FB', minWidth: 160 }}
-                  >
-                    <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                  <Box key={t.type} sx={{ px: 1.2, py: 0.6, borderRadius: 1.5, bgcolor: '#F7F9FB' }}>
+                    <Typography sx={{ fontSize: 10.5, color: '#5D6D7E' }}>
                       {REQUEST_TYPE_LABELS[t.type]}
                     </Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72' }}>
                       {t.count} demande(s)
-                      {t.approvedDays > 0 ? ` · ${t.approvedDays} j accordé(s)` : ''}
+                      {t.approvedDays > 0 ? ` · ${t.approvedDays} j` : ''}
                     </Typography>
                   </Box>
                 ))}
               </Stack>
             )}
 
-            <TableContainer sx={{ overflowX: 'auto' }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Référence</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Type</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Période</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Durée</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, color: '#5D6D7E' }}>Statut</TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {history.items.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} sx={{ fontSize: 13, color: '#5D6D7E' }}>
-                        Aucune demande sur ce périmètre.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {history.items.map((r) => (
-                    <TableRow key={r.id} hover>
-                      <TableCell sx={{ fontSize: 11.5, fontFamily: 'monospace' }}>
+            {history.items.length === 0 ? (
+              <Typography sx={{ fontSize: 12.5, color: '#5D6D7E' }}>
+                Aucune demande sur ce périmètre.
+              </Typography>
+            ) : (
+              /* Liste plutôt que tableau : six colonnes ne tiennent pas dans
+                 une demi-largeur sans devenir illisibles. */
+              <Stack divider={<Box sx={{ borderBottom: '1px solid #F5F6FA' }} />}>
+                {history.items.map((r) => (
+                  <Box
+                    key={r.id}
+                    component={RouterLink}
+                    to={`/requests/${r.id}`}
+                    sx={{
+                      py: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      '&:hover': { bgcolor: '#FAFBFC' },
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 10.5, color: '#5D6D7E', fontFamily: 'monospace' }}>
                         {r.reference ?? '-'}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 12.5 }}>{REQUEST_TYPE_LABELS[r.type]}</TableCell>
-                      <TableCell sx={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                      </Typography>
+                      <Typography sx={{ fontSize: 12.5, fontWeight: 500 }} noWrap>
+                        {REQUEST_TYPE_LABELS[r.type]}
+                        {r.calculatedDays ? ` · ${r.calculatedDays} j` : ''}
+                      </Typography>
+                      <Typography sx={{ fontSize: 11, color: '#5D6D7E' }} noWrap>
                         {r.type === 'ATTESTATION_PRESENCE'
                           ? formatDate(r.startDate)
                           : `${formatDate(r.startDate)} → ${formatDate(r.endDate)}`}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 12.5 }}>
-                        {r.calculatedDays ? `${r.calculatedDays} j` : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={r.status} />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button component={RouterLink} to={`/requests/${r.id}`} size="small">
-                          Détail
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      </Typography>
+                    </Box>
+                    <StatusBadge status={r.status} />
+                  </Box>
+                ))}
+              </Stack>
+            )}
           </>
         )}
       </Box>

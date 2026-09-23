@@ -203,13 +203,18 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
         )}
       </Paper>
 
-      <Paper sx={{ p: 2.5, borderRadius: 2, mb: 2 }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Activité mensuelle</Typography>
-        <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1 }}>
-          Demandes reçues et demandes clôturées · exercice {o?.year ?? year}
-        </Typography>
-        {o && <ActivityChart data={o.monthly} />}
-      </Paper>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '380px 1fr' }, gap: 1.5, mb: 2, alignItems: 'stretch' }}>
+        <EmployeeHistoryPanel />
+        <Paper sx={{ p: 2.5, borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Activité mensuelle</Typography>
+          <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1 }}>
+            Demandes reçues et demandes clôturées · exercice {o?.year ?? year}
+          </Typography>
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+            {o && <ActivityChart data={o.monthly} />}
+          </Box>
+        </Paper>
+      </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2 }}>
@@ -302,7 +307,6 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
         </Paper>
       )}
 
-      <EmployeeHistoryPanel />
     </Box>
   );
 }

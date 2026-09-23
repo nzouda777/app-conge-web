@@ -31,7 +31,7 @@ export function ActivityChart({
   const active = hover !== null ? data[hover] : null;
 
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       {/* Légende : deux séries, l'identité ne repose jamais sur la seule couleur. */}
       <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
         {[
