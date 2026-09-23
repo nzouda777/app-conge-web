@@ -88,6 +88,10 @@ export async function importPersonnelFile(file: File, onProgress?: (pct: number)
   const form = new FormData();
   form.append('file', file);
   const { data } = await apiClient.post<PersonnelImportReport>('/admin/personnel/import', form, {
+    // Un import porte plus de 1500 lignes : on laisse largement le temps au
+    // serveur, faute de quoi le navigateur abandonne une opération qui, elle,
+    // ira à son terme.
+    timeout: 180_000,
     onUploadProgress: (e) => {
       if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
     },
