@@ -8,22 +8,26 @@ import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import type { RequestStatus } from '../types/api';
 import { useAuth } from '../auth/AuthContext';
 
-const TABS: { label: string; status?: RequestStatus }[] = [
+// Les onglets suivent le parcours du dossier : initié chez la hiérarchie,
+// reçu à la SDAG, coté, puis son issue. « Rejetées » réunit les deux refus -
+// l'avis défavorable d'un supérieur et le rejet par l'agent de traitement.
+const TABS: { label: string; statuses?: RequestStatus[] }[] = [
   { label: 'Toutes' },
-  { label: 'À coter', status: 'PENDING_ASSIGNMENT' },
-  { label: 'En traitement', status: 'ASSIGNED' },
-  { label: 'Approuvées', status: 'APPROVED' },
-  { label: 'Rejetées', status: 'REJECTED' },
+  { label: 'Initiées', statuses: ['PENDING_MANAGER_REVIEW'] },
+  { label: 'À coter', statuses: ['PENDING_ASSIGNMENT'] },
+  { label: 'En traitement - SDAG', statuses: ['ASSIGNED'] },
+  { label: 'Signées', statuses: ['APPROVED'] },
+  { label: 'Rejetées', statuses: ['REJECTED', 'MANAGER_REJECTED'] },
 ];
 
 export function SdagPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState(0);
-  const status = TABS[tab].status;
+  const statuses = TABS[tab].statuses;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['sdag', 'requests', status],
-    queryFn: () => listSdagRequests({ status, pageSize: 50 }),
+    queryKey: ['sdag', 'requests', statuses],
+    queryFn: () => listSdagRequests({ statuses, pageSize: 50 }),
   });
 
   return (

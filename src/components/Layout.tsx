@@ -100,11 +100,20 @@ export function Layout({ children }: { children: ReactNode }) {
           ...(user.hasSubordinates || user.role === 'TEST_INTEGRAL'
             ? [{ label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' }]
             : []),
+          // La vue d'ensemble de la SDAG relève du seul Sous-Directeur ; les
+          // agents de traitement ont leur propre file, limitée aux dossiers
+          // qui leur sont cotés.
           {
             label: 'Vue SDAG',
             icon: <GavelIcon />,
             to: '/sdag',
-            roles: ['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'TEST_INTEGRAL'],
+            roles: ['SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL'],
+          },
+          {
+            label: 'Mes dossiers à traiter',
+            icon: <FactCheckIcon />,
+            to: '/mes-dossiers',
+            roles: ['AGENT_TRAITEMENT_SDAG', 'TEST_INTEGRAL'],
           },
           // Le Directeur Général l'a déjà comme tableau de bord ; cette entrée
           // est là pour le Sous-Directeur SDAG, qui a le sien.

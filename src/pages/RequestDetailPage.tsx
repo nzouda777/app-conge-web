@@ -205,6 +205,9 @@ export function RequestDetailPage() {
     (user?.role === 'AGENT_TRAITEMENT_SDAG' || isTest) && request.currentAssigneeId === user?.employeeId;
   const isDirector =
     user?.role === 'SOUS_DIRECTEUR_SDAG' || user?.role === 'DIRECTEUR_GENERAL' || isTest;
+  // Date de cotation : c'est le moment où l'agent de traitement a reçu le
+  // dossier.
+  const assignedAt = request.sdagAssignments?.at(-1)?.createdAt;
   const inProgressStage = request.status === 'ASSIGNED';
   const isDecided = request.status === 'APPROVED' || request.status === 'REJECTED';
   const canDownloadDocument = inProgressStage
@@ -420,6 +423,23 @@ export function RequestDetailPage() {
               >
                 Télécharger le document
               </Button>
+            )}
+            {/* Qui détient le dossier, et depuis quand : sans cela, un dossier
+                qui traîne ne désigne personne. */}
+            {request.currentAssignee && (
+              <Box sx={{ textAlign: 'inherit', mt: 0.5 }}>
+                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                  {isDecided ? 'Traité par' : 'En traitement chez'}
+                </Typography>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 500 }}>
+                  {request.currentAssignee.firstName} {request.currentAssignee.lastName}
+                </Typography>
+                {assignedAt && (
+                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                    Reçu le {formatDateTime(assignedAt)}
+                  </Typography>
+                )}
+              </Box>
             )}
           </Stack>
         </Box>

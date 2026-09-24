@@ -7,6 +7,7 @@ import { NewRequestPage } from './pages/NewRequestPage';
 import { RequestDetailPage } from './pages/RequestDetailPage';
 import { ManagerRequestsPage } from './pages/ManagerRequestsPage';
 import { SdagPage } from './pages/SdagPage';
+import { MyTreatmentPage } from './pages/MyTreatmentPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
@@ -89,10 +90,20 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Les agents de traitement n'ont plus la vue d'ensemble de la SDAG,
+          qui relève du Sous-Directeur : ils ont leur propre file. */}
+      <Route
+        path="/mes-dossiers"
+        element={
+          <ProtectedRoute roles={['AGENT_TRAITEMENT_SDAG', 'TEST_INTEGRAL']}>
+            <MyTreatmentPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/sdag"
         element={
-          <ProtectedRoute roles={['SOUS_DIRECTEUR_SDAG', 'AGENT_TRAITEMENT_SDAG', 'ADMIN', 'TEST_INTEGRAL']}>
+          <ProtectedRoute roles={['SOUS_DIRECTEUR_SDAG', 'ADMIN', 'TEST_INTEGRAL']}>
             <SdagPage />
           </ProtectedRoute>
         }

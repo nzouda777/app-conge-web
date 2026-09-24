@@ -1,8 +1,17 @@
 import { apiClient } from './client';
 import type { LeaveRequest, Paginated, RequestStatus } from '../types/api';
 
-export async function listSdagRequests(params: { status?: RequestStatus; page?: number; pageSize?: number }) {
-  const { data } = await apiClient.get<Paginated<LeaveRequest>>('/sdag/requests', { params });
+export async function listSdagRequests(params: {
+  status?: RequestStatus;
+  // Plusieurs statuts pour un même onglet : « Rejetées » réunit l'avis
+  // défavorable d'un supérieur et le rejet par l'agent de traitement.
+  statuses?: RequestStatus[];
+  page?: number;
+  pageSize?: number;
+}) {
+  const { data } = await apiClient.get<Paginated<LeaveRequest>>('/sdag/requests', {
+    params: { ...params, statuses: params.statuses?.join(',') },
+  });
   return data;
 }
 

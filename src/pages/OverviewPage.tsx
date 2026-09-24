@@ -114,7 +114,6 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
     .map((t) => ({ t, v: o?.byType[t] ?? 0 }))
     .sort((a, b) => b.v - a.v);
   const typeMax = Math.max(1, ...typeRows.map((r) => r.v));
-  const loadMax = Math.max(1, ...(o?.agentLoad ?? []).map((a) => a.count));
 
   const delay = (v: number | null | undefined) => (v === null || v === undefined ? '-' : `${v} j`);
 
@@ -146,21 +145,23 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
       )}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 1.5, mb: 2 }}>
-        <StatTile label="Demandes" value={o?.total ?? 0} sub={`exercice ${o?.year ?? year}`} tone="neutral" />
+        {/* Les mêmes catégories que la vue SDAG, dans le même ordre. */}
+        <StatTile label="Toutes les demandes" value={o?.total ?? 0} sub={`exercice ${o?.year ?? year}`} tone="neutral" />
+        <StatTile
+          label="Initiées"
+          value={s.PENDING_MANAGER_REVIEW ?? 0}
+          sub="en attente d'avis hiérarchique"
+          tone="progress"
+        />
         <StatTile label="À coter" value={s.PENDING_ASSIGNMENT ?? 0} sub="action SDAG" tone="action" />
-        <StatTile label="En traitement" value={s.ASSIGNED ?? 0} sub={`${o?.agentLoad.length ?? 0} agent(s)`} tone="progress" />
         <StatTile
-          label="En retard"
-          value={o?.overdue ?? '-'}
-          sub={o?.overdue === null ? 'délais non configurés' : 'au-delà de la cible'}
-          tone={o?.overdue ? 'danger' : 'neutral'}
+          label="En traitement - SDAG"
+          value={s.ASSIGNED ?? 0}
+          sub="cotés à un agent"
+          tone="progress"
         />
-        <StatTile
-          label="Terminées"
-          value={signed + stopped}
-          sub={`${signed} signée(s) · ${stopped} arrêtée(s)`}
-          tone="success"
-        />
+        <StatTile label="Signées" value={signed} sub={`exercice ${o?.year ?? year}`} tone="success" />
+        <StatTile label="Rejetées" value={stopped} sub="avis défavorable ou rejet" tone="danger" />
       </Box>
 
       <Paper sx={{ p: 2.5, borderRadius: 2, mb: 2 }}>
@@ -216,7 +217,7 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
         </Paper>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Délais de traitement</Typography>
           <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1.5 }}>
@@ -250,29 +251,6 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
           </Stack>
         </Paper>
 
-        <Paper sx={{ p: 2.5, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Charge des agents</Typography>
-          <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1.5 }}>Dossiers actuellement détenus</Typography>
-          {(o?.agentLoad.length ?? 0) === 0 ? (
-            <Typography sx={{ fontSize: 12.5, color: '#5D6D7E' }}>Aucun dossier en traitement.</Typography>
-          ) : (
-            <Stack spacing={1.2}>
-              {o?.agentLoad.map((a) => (
-                <BarRow key={a.employeeId} label={a.name} value={a.count} max={loadMax} color="#5DADE2" />
-              ))}
-            </Stack>
-          )}
-          {o && (
-            <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid #f0f1f3', display: 'flex', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: 11.5, color: TONE_COLORS.success.text }}>
-                Avis favorables · {o.opinions.favourable}
-              </Typography>
-              <Typography sx={{ fontSize: 11.5, color: TONE_COLORS.danger.text }}>
-                Défavorables · {o.opinions.unfavourable}
-              </Typography>
-            </Box>
-          )}
-        </Paper>
       </Box>
 
       {mine.length > 0 && (

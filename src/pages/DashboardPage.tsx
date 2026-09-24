@@ -4,7 +4,6 @@ import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { fetchQuotaSummary } from '../api/misc';
 import { listRequests } from '../api/requests';
-import { listSdagRequests } from '../api/sdag';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { Greeting } from '../components/Greeting';
@@ -16,7 +15,6 @@ export function DashboardPage() {
   const isAgent = user?.role === 'AGENT';
   // Anyone with people reporting to them has requests to review.
   const isManager = !!user?.hasSubordinates;
-  const isSdag = user?.role === 'SOUS_DIRECTEUR_SDAG' || user?.role === 'AGENT_TRAITEMENT_SDAG';
 
   const isDirecteurGeneral = user?.role === 'DIRECTEUR_GENERAL';
 
@@ -34,11 +32,6 @@ export function DashboardPage() {
     queryKey: ['requests', 'manager-queue'],
     queryFn: () => listRequests({ status: 'PENDING_MANAGER_REVIEW', page: 1, pageSize: 1 }),
     enabled: isManager && !isDirecteurGeneral,
-  });
-  const { data: sdagQueue } = useQuery({
-    queryKey: ['sdag', 'queue-count'],
-    queryFn: () => listSdagRequests({ page: 1, pageSize: 1 }),
-    enabled: isSdag,
   });
 
   // Le Directeur Général ne dépose pas de demande : son tableau de bord est
@@ -81,9 +74,7 @@ export function DashboardPage() {
             subColor="#D35400"
           />
         )}
-        {isSdag && (
-          <StatCard label="File SDAG" value={sdagQueue?.total ?? 0} sub="dossiers à traiter" subColor="#D35400" />
-        )}
+
       </Box>
 
       {quota && (
