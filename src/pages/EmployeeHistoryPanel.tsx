@@ -57,7 +57,11 @@ export function EmployeeHistoryPanel() {
           options={employees?.items ?? []}
           value={selected}
           onChange={(_, v) => setSelected(v)}
-          onInputChange={(_, v) => setSearch(v)}
+          // Même précaution qu'ailleurs : ne relancer la recherche qu'à la
+          // frappe, pas à la sélection.
+          onInputChange={(_, v, reason) => {
+            if (reason === 'input') setSearch(v);
+          }}
           loading={isFetching}
           isOptionEqualToValue={(a, b) => a.id === b.id}
           getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.matricule}`}

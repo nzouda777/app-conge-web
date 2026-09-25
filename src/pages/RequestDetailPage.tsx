@@ -565,7 +565,13 @@ export function RequestDetailPage() {
                 options={assigneeOptions}
                 value={assigneeOptions.find((e) => e.id === assigneeId) ?? null}
                 onChange={(_, v) => setAssigneeId(v?.id ?? '')}
-                onInputChange={(_, v) => setAssigneeSearch(v)}
+                // Seulement quand l'utilisateur tape. À la sélection, MUI émet
+                // aussi cet événement avec le libellé complet de l'option, qui
+                // ne correspond à personne : la liste se vidait alors sous la
+                // valeur choisie, laissant le composant dans un état incohérent.
+                onInputChange={(_, v, reason) => {
+                  if (reason === 'input') setAssigneeSearch(v);
+                }}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 getOptionLabel={(e) => `${e.firstName} ${e.lastName} - ${e.position}`}
                 // L'auteur de la demande reste visible mais non sélectionnable :
