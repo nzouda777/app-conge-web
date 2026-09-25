@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Autocomplete,
@@ -60,6 +60,9 @@ export function RequestDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  // Confirmation d'une action réussie. Sans elle, l'acte se traduit seulement
+  // par la disparition du bouton, ce qui ne se distingue pas d'un échec.
+  const [notice, setNotice] = useState<string | null>(null);
   const [rejectDialog, setRejectDialog] = useState<'manager' | 'sdag' | null>(null);
   const [comment, setComment] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
@@ -102,8 +105,13 @@ export function RequestDetailPage() {
   const managerReviewMutation = useMutation({
     mutationFn: (params: { decision: 'FAVORABLE' | 'DEFAVORABLE'; comment?: string }) =>
       managerReview(requestId, params.decision, params.comment),
-    onSuccess: () => {
+    onSuccess: (_, params) => {
       invalidate();
+      setNotice(
+        params.decision === 'FAVORABLE'
+          ? 'Avis favorable enregistré. La demande poursuit son parcours.'
+          : "Avis défavorable enregistré. La demande s'arrête là et le demandeur en est informé.",
+      );
       setRejectDialog(null);
       setComment('');
       setError(null);
@@ -113,8 +121,12 @@ export function RequestDetailPage() {
 
   const assignMutation = useMutation({
     mutationFn: () => assignRequest(requestId, assigneeId),
-    onSuccess: () => {
+    onSuccess: (updated) => {
       invalidate();
+      const who = updated?.currentAssignee
+        ? `${updated.currentAssignee.firstName} ${updated.currentAssignee.lastName}`
+        : "l'agent de traitement";
+      setNotice(`Dossier coté à ${who}. Il en a été notifié et doit désormais le traiter.`);
       setAssigneeId('');
       setError(null);
     },
@@ -124,8 +136,13 @@ export function RequestDetailPage() {
   const decisionMutation = useMutation({
     mutationFn: (params: { decision: 'APPROVED' | 'REJECTED'; comment?: string }) =>
       submitDecision(requestId, params.decision, params.comment, observation),
-    onSuccess: () => {
+    onSuccess: (_, params) => {
       invalidate();
+      setNotice(
+        params.decision === 'APPROVED'
+          ? 'Dossier validé. Le demandeur peut télécharger son document signé.'
+          : 'Dossier rejeté. Le demandeur en est informé, motif à l\'appui.',
+      );
       setRejectDialog(null);
       setComment('');
       setObservation('');
@@ -208,6 +225,42 @@ export function RequestDetailPage() {
   // Date de cotation : c'est le moment où l'agent de traitement a reçu le
   // dossier.
   const assignedAt = request.sdagAssignments?.at(-1)?.createdAt;
+  const hasAction = canSubmit || canManagerReview || canAssign || canDecideAsAgent;
+
+  // Où en est le dossier, dit en une phrase, pour celui qui n'a rien à y
+  // faire dans l'immédiat.
+  const assigneeName = request.currentAssignee
+    ? `${request.currentAssignee.firstName} ${request.currentAssignee.lastName}`
+    : null;
+  const followUpText =
+    request.status === 'DRAFT'
+      ? "Ce brouillon n'a pas encore été soumis par son auteur."
+      : request.status === 'PENDING_MANAGER_REVIEW'
+        ? "La demande attend l'avis de la hiérarchie du demandeur."
+        : request.status === 'PENDING_ASSIGNMENT'
+          ? 'La demande est parvenue à la SDAG et attend sa cotation à un agent de traitement.'
+          : request.status === 'ASSIGNED'
+            ? `Le dossier est en cours de traitement${assigneeName ? ` chez ${assigneeName}` : ''}${
+                assignedAt ? `, reçu le ${formatDateTime(assignedAt)}` : ''
+              }. Vous n'avez pas d'action à mener à ce stade.`
+            : request.status === 'APPROVED'
+              ? 'La demande est signée. Le document est disponible au téléchargement.'
+              : request.status === 'MANAGER_REJECTED'
+                ? "La demande a été arrêtée par un avis défavorable de la hiérarchie."
+                : 'La demande a été rejetée au traitement.';
+
+  // Retour vers la liste d'où l'on vient le plus probablement, pour reprendre
+  // le fil du travail plutôt que rester sur un dossier clos.
+  const backTo =
+    user?.role === 'SOUS_DIRECTEUR_SDAG'
+      ? { to: '/sdag', label: 'Retour à la vue SDAG' }
+      : user?.role === 'AGENT_TRAITEMENT_SDAG'
+        ? { to: '/mes-dossiers', label: 'Retour à mes dossiers à traiter' }
+        : isRequestManager
+          ? { to: '/manager', label: 'Retour aux demandes à examiner' }
+          : isOwner
+            ? { to: '/requests', label: 'Retour à mes demandes' }
+            : null;
   const inProgressStage = request.status === 'ASSIGNED';
   const isDecided = request.status === 'APPROVED' || request.status === 'REJECTED';
   const canDownloadDocument = inProgressStage
@@ -450,8 +503,28 @@ export function RequestDetailPage() {
           {error}
         </Alert>
       )}
+      {notice && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
 
-      {(canSubmit || canManagerReview || canAssign || canDecideAsAgent) && (
+      {/* Quand l'utilisateur n'a rien à faire sur ce dossier, un état de suivi
+          prend la place du bloc d'actions : sa disparition pure et simple
+          laissait croire que la page s'était vidée. */}
+      {!hasAction && (
+        <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 1 }}>Suivi</Typography>
+          <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>{followUpText}</Typography>
+          {backTo && (
+            <Button component={RouterLink} to={backTo.to} size="small" sx={{ mt: 1.5, px: 0 }}>
+              ← {backTo.label}
+            </Button>
+          )}
+        </Paper>
+      )}
+
+      {hasAction && (
         <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 2 }}>Actions</Typography>
 
