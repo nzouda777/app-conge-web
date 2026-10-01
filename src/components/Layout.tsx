@@ -3,6 +3,7 @@ import {
   AppBar,
   Avatar,
   Badge,
+  Collapse,
   Box,
   Divider,
   Drawer,
@@ -27,6 +28,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MenuIcon from '@mui/icons-material/Menu';
 import InsightsIcon from '@mui/icons-material/Insights';
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
@@ -49,6 +52,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  // null = on suit la page courante ; '' = l'utilisateur a tout replié.
+  const [manualSection, setManualSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
 
@@ -69,64 +74,112 @@ export function Layout({ children }: { children: ReactNode }) {
     else setMobileOpen((o) => !o);
   };
 
-  // ADMIN gets a separate space — administration screens only, none of the
-  // normal operational (leave-request) navigation.
-  const navItems: { label: string; icon: ReactNode; to: string; roles?: string[] }[] =
+  // Le menu est groupé par espace : ce que l'on fait pour soi, ce que l'on
+  // fait pour les autres, et le reste. Une seule section reste ouverte à la
+  // fois, ce qui garde la barre courte quel que soit le nombre de rôles.
+  type NavItem = { label: string; icon: ReactNode; to: string };
+  type NavSection = { key: string; title: string; items: NavItem[] };
+
+  const sections: NavSection[] =
     user.role === 'ADMIN'
       ? [
-          { label: 'Tableau de bord', icon: <InsightsIcon />, to: '/vue-ensemble' },
-          { label: 'Utilisateurs', icon: <PeopleIcon />, to: '/admin' },
-          { label: 'Demandes', icon: <ListAltIcon />, to: '/admin/requests' },
-          { label: 'Décisions ministérielles', icon: <GavelOutlinedIcon />, to: '/admin/decisions' },
-          { label: 'Délais de traitement', icon: <TimerOutlinedIcon />, to: '/admin/delais' },
+          {
+            key: 'admin',
+            title: 'Administration',
+            items: [
+              { label: 'Utilisateurs', icon: <PeopleIcon />, to: '/admin' },
+              { label: 'Demandes', icon: <ListAltIcon />, to: '/admin/requests' },
+              { label: 'Décisions ministérielles', icon: <GavelOutlinedIcon />, to: '/admin/decisions' },
+              { label: 'Délais de traitement', icon: <TimerOutlinedIcon />, to: '/admin/delais' },
+            ],
+          },
+          {
+            key: 'pilotage',
+            title: 'Pilotage',
+            items: [{ label: 'Tableau de bord', icon: <InsightsIcon />, to: '/vue-ensemble' }],
+          },
         ]
       : user.role === 'DIRECTEUR_GENERAL'
-      ? [
-          // Le Directeur Général ne dépose pas de demande : pas d'espace
-          // personnel, son tableau de bord est la vue d'ensemble.
-          { label: 'Tableau de bord', icon: <InsightsIcon />, to: '/dashboard' },
-          { label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' },
-          { label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' },
-        ]
-      : [
-          // « Mon espace » réunit le tableau de bord personnel et la liste des
-          // demandes : c'est le même sujet, les demandes de l'utilisateur.
-          { label: 'Mon espace', icon: <AssignmentIcon />, to: '/dashboard' },
-          // Tout le personnel peut déposer une demande. Le Directeur Général
-          // est la seule exception, et il a sa propre branche plus haut.
-          { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' },
-          // Shown to whoever actually has people reporting to them — a Chef de
-          // Service, a Sous-Directeur, the DG — rather than to one fixed role.
-          ...(user.hasSubordinates || user.role === 'TEST_INTEGRAL'
-            ? [{ label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' }]
-            : []),
-          // La vue d'ensemble de la SDAG relève du seul Sous-Directeur ; les
-          // agents de traitement ont leur propre file, limitée aux dossiers
-          // qui leur sont cotés.
-          {
-            label: 'Vue SDAG',
-            icon: <GavelIcon />,
-            to: '/sdag',
-            roles: ['SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL'],
-          },
-          {
-            label: 'Mes dossiers à traiter',
-            icon: <FactCheckIcon />,
-            to: '/mes-dossiers',
-            roles: ['AGENT_TRAITEMENT_SDAG', 'TEST_INTEGRAL'],
-          },
-          // Le Directeur Général l'a déjà comme tableau de bord ; cette entrée
-          // est là pour le Sous-Directeur SDAG, qui a le sien.
-          // Vue d'ensemble de toute la Direction Générale, par opposition à
-          // « Mon espace » qui ne porte que sur les demandes de l'utilisateur.
-          {
-            label: 'Tableau de bord',
-            icon: <InsightsIcon />,
-            to: '/vue-ensemble',
-            roles: ['SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL'],
-          },
-          { label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' },
-        ];
+        ? [
+            // Le Directeur Général ne dépose pas de demande : pas d'espace
+            // personnel, son tableau de bord est la vue d'ensemble.
+            {
+              key: 'pilotage',
+              title: 'Pilotage',
+              items: [{ label: 'Tableau de bord', icon: <InsightsIcon />, to: '/dashboard' }],
+            },
+            {
+              key: 'hierarchie',
+              title: 'Responsable hiérarchique',
+              items: [{ label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' }],
+            },
+            {
+              key: 'general',
+              title: 'Général',
+              items: [{ label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' }],
+            },
+          ]
+        : [
+            {
+              key: 'personnel',
+              title: 'Espace personnel',
+              items: [
+                // « Mon espace » réunit le tableau de bord personnel et la
+                // liste des demandes : c'est le même sujet.
+                { label: 'Mon espace', icon: <AssignmentIcon />, to: '/dashboard' },
+                { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/requests/new' },
+              ],
+            },
+            // Montré à qui encadre réellement du personnel, d'après la chaîne
+            // hiérarchique et non d'après un rôle fixe.
+            ...(user.hasSubordinates || user.role === 'TEST_INTEGRAL'
+              ? [
+                  {
+                    key: 'hierarchie',
+                    title: 'Responsable hiérarchique',
+                    items: [{ label: 'Demandes à examiner', icon: <FactCheckIcon />, to: '/manager' }],
+                  },
+                ]
+              : []),
+            // La vue d'ensemble de la SDAG relève du seul Sous-Directeur ; les
+            // agents de traitement ont leur propre file.
+            ...(user.role === 'SOUS_DIRECTEUR_SDAG' || user.role === 'TEST_INTEGRAL'
+              ? [
+                  {
+                    key: 'sdag',
+                    title: 'Espace SDAG',
+                    items: [
+                      { label: 'Réception & traitement', icon: <GavelIcon />, to: '/sdag' },
+                      { label: 'Tableau de bord', icon: <InsightsIcon />, to: '/vue-ensemble' },
+                    ],
+                  },
+                ]
+              : []),
+            ...(user.role === 'AGENT_TRAITEMENT_SDAG'
+              ? [
+                  {
+                    key: 'traitement',
+                    title: 'Espace SDAG',
+                    items: [
+                      { label: 'Mes dossiers à traiter', icon: <FactCheckIcon />, to: '/mes-dossiers' },
+                    ],
+                  },
+                ]
+              : []),
+            {
+              key: 'general',
+              title: 'Général',
+              items: [{ label: 'Notifications', icon: <NotificationsIcon />, to: '/notifications' }],
+            },
+          ];
+
+  const isActive = (to: string) =>
+    location.pathname === to || location.pathname.startsWith(to + '/');
+  // La section contenant la page courante s'ouvre d'elle-même : on ne demande
+  // pas à l'utilisateur de retrouver où il se trouve.
+  const sectionOfCurrentPage =
+    sections.find((sec) => sec.items.some((it) => isActive(it.to)))?.key ?? sections[0]?.key ?? null;
+  const openSection = manualSection ?? sectionOfCurrentPage;
 
   // Sidebar inner content, reused by both the desktop (persistent) and the
   // mobile (temporary) drawer.
@@ -149,33 +202,65 @@ export function Layout({ children }: { children: ReactNode }) {
           <Typography noWrap sx={{ fontSize: 12, fontWeight: 500 }}>
             {user.employee ? `${user.employee.firstName} ${user.employee.lastName}` : user.email}
           </Typography>
-          <Typography sx={{ fontSize: 11, opacity: 0.6 }}>{ROLE_LABELS[user.role]}</Typography>
+            {/* La structure situe la personne dans l'organigramme ; le rôle,
+              lui, est déjà porté par les menus auxquels elle a accès. */}
+          <Typography noWrap sx={{ fontSize: 11, opacity: 0.6 }}>
+            {user.employee?.organizationUnit?.name ?? ROLE_LABELS[user.role]}
+          </Typography>
         </Box>
       </Box>
-      <List sx={{ py: 1, flex: 1, overflowY: 'auto' }}>
-        {navItems
-          .filter((item) => !item.roles || item.roles.includes(user.role))
-          .map((item) => {
-            const active = location.pathname === item.to || location.pathname.startsWith(item.to + '/');
-            return (
+      <List sx={{ py: 1, flex: 1, overflowY: 'auto' }} disablePadding>
+        {sections.map((sec) => {
+          const open = openSection === sec.key;
+          return (
+            <Box key={sec.key}>
               <ListItemButton
-                key={item.to}
-                component={RouterLink}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => setManualSection(open ? '' : sec.key)}
                 sx={{
-                  color: active ? '#fff' : 'rgba(255,255,255,0.75)',
-                  bgcolor: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-                  borderLeft: active ? '3px solid #27AE60' : '3px solid transparent',
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                  py: 0.75,
+                  color: 'rgba(255,255,255,0.5)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
                 }}
               >
-                <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={<Typography sx={{ fontSize: 13 }}>{item.label}</Typography>} />
-                {item.to === '/notifications' && unreadCount > 0 && <Badge badgeContent={unreadCount} color="error" />}
+                <ListItemText
+                  primary={
+                    <Typography sx={{ fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                      {sec.title}
+                    </Typography>
+                  }
+                />
+                {open ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
               </ListItemButton>
-            );
-          })}
+              <Collapse in={open} timeout="auto" unmountOnExit>
+                {sec.items.map((item) => {
+                  const active = isActive(item.to);
+                  return (
+                    <ListItemButton
+                      key={item.to}
+                      component={RouterLink}
+                      to={item.to}
+                      onClick={() => setMobileOpen(false)}
+                      sx={{
+                        color: active ? '#fff' : 'rgba(255,255,255,0.75)',
+                        bgcolor: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+                        borderLeft: active ? '3px solid #27AE60' : '3px solid transparent',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
+                      <ListItemText primary={<Typography sx={{ fontSize: 13 }}>{item.label}</Typography>} />
+                      {/* Seules les notifications portent une pastille : elle
+                          signale du nouveau, pas un volume. */}
+                      {item.to === '/notifications' && unreadCount > 0 && (
+                        <Badge badgeContent={unreadCount} color="error" sx={{ mr: 1.5 }} />
+                      )}
+                    </ListItemButton>
+                  );
+                })}
+              </Collapse>
+            </Box>
+          );
+        })}
       </List>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
       <ListItemButton

@@ -42,10 +42,34 @@ export function statusTone(status: RequestStatus): Tone {
   }
 }
 
+type SupervisorLike = {
+  level: number;
+  supervisorId: string;
+  supervisor?: { firstName: string; lastName: string; position: string };
+};
+
 type RequestLike = Pick<LeaveRequest, 'status' | 'employeeId' | 'currentAssigneeId'> & {
   currentHierarchyLevel?: number | null;
-  employee?: { managerId?: string | null; supervisors?: { level: number; supervisorId: string }[] };
+  employee?: { managerId?: string | null; supervisors?: SupervisorLike[] };
 };
+
+// Le supérieur dont l'avis est attendu au niveau en cours. Permet d'afficher
+// de qui l'on attend quelque chose, plutôt que le seul constat qu'un avis
+// manque.
+export function expectedReviewer(request: RequestLike): SupervisorLike | null {
+  if (request.status !== 'PENDING_MANAGER_REVIEW') return null;
+  const level = request.currentHierarchyLevel ?? 1;
+  return request.employee?.supervisors?.find((sv) => sv.level === level) ?? null;
+}
+
+// « Poste, Prénom NOM » du supérieur attendu, ou null si la chaîne ne permet
+// pas de l'identifier.
+export function expectedReviewerLabel(request: RequestLike): string | null {
+  const sv = expectedReviewer(request);
+  if (!sv?.supervisor) return null;
+  const { position, firstName, lastName } = sv.supervisor;
+  return `${position}, ${firstName} ${lastName}`;
+}
 
 // L'utilisateur connecté doit-il agir sur ce dossier ?
 //   - le demandeur sur son propre brouillon : non, un brouillon reste neutre ;

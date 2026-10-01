@@ -4,6 +4,7 @@ import { Box, Button, Paper, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom';
 import { listSdagRequests } from '../api/sdag';
 import { StatusBadge } from '../components/StatusBadge';
+import { expectedReviewerLabel } from '../theme/statusColors';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import type { RequestStatus } from '../types/api';
 import { useAuth } from '../auth/AuthContext';
@@ -73,6 +74,13 @@ export function SdagPage() {
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}
                   {r.currentAssignee ? ` · Coté à ${r.currentAssignee.firstName} ${r.currentAssignee.lastName}` : ''}
                 </Typography>
+                {/* De qui l'avis est attendu : sans cela, un dossier bloqué ne
+                    désigne personne et nul ne sait qui relancer. */}
+                {expectedReviewerLabel(r) && (
+                  <Typography sx={{ fontSize: 11, color: '#9C5B00' }}>
+                    En attente de l'avis de : {expectedReviewerLabel(r)}
+                  </Typography>
+                )}
               </Box>
               <Button component={RouterLink} to={`/requests/${r.id}`} variant="outlined" size="small">
                 Détail

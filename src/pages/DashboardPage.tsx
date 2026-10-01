@@ -13,8 +13,6 @@ import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 export function DashboardPage() {
   const { user } = useAuth();
   const isAgent = user?.role === 'AGENT';
-  // Anyone with people reporting to them has requests to review.
-  const isManager = !!user?.hasSubordinates;
 
   const isDirecteurGeneral = user?.role === 'DIRECTEUR_GENERAL';
 
@@ -27,11 +25,6 @@ export function DashboardPage() {
     queryKey: ['requests', 'recent'],
     queryFn: () => listRequests({ page: 1, pageSize: 5 }),
     enabled: !isDirecteurGeneral,
-  });
-  const { data: managerQueue } = useQuery({
-    queryKey: ['requests', 'manager-queue'],
-    queryFn: () => listRequests({ status: 'PENDING_MANAGER_REVIEW', page: 1, pageSize: 1 }),
-    enabled: isManager && !isDirecteurGeneral,
   });
 
   // Le Directeur Général ne dépose pas de demande : son tableau de bord est
@@ -46,6 +39,7 @@ export function DashboardPage() {
   }
 
   const available = quota?.congeAnnuel.availableDays ?? 0;
+  const perm = quota?.permissionsMotivees;
   const entitlement = quota?.congeAnnuel.entitlementDays ?? 1;
   const consumedPct = quota ? Math.round(((entitlement - available) / entitlement) * 100) : 0;
 
@@ -54,27 +48,50 @@ export function DashboardPage() {
       <Greeting user={user} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 1.5, mb: 3 }}>
+        {/* Ce qui reste à l'agent, et non ce qu'il a déjà consommé : c'est ce
+            solde qui conditionne sa prochaine demande. */}
         <StatCard
-          label="Congé annuel"
+          label="Congé annuel disponible"
           value={
             <>
-              {available} <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>/ {entitlement}j</Typography>
+              {available}{' '}
+              <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>
+                / {entitlement}j
+              </Typography>
             </>
           }
           sub={`${consumedPct}% consommés`}
-          subColor="#F39C12"
+          subColor={available <= 0 ? '#C0392B' : '#5D6D7E'}
         />
-        <StatCard label="Jours en attente" value={quota?.congeAnnuel.pendingDays ?? 0} sub="demandes en cours" />
-        <StatCard label="Jours utilisés (année)" value={quota?.congeAnnuel.usedDays ?? 0} sub="congé annuel" />
-        {isManager && (
-          <StatCard
-            label="À examiner"
-            value={managerQueue?.total ?? 0}
-            sub="demandes en attente d'avis"
-            subColor="#D35400"
-          />
-        )}
-
+        {/* Les permissions motivées sont les seules plafonnées : mariage,
+            décès et paternité gardent leur durée légale et n'entament pas ce
+            solde, exactement comme la règle appliquée au dépôt. */}
+        <StatCard
+          label="Permissions ce mois"
+          value={
+            <>
+              {perm?.remainingThisMonth ?? 0}{' '}
+              <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>
+                / {perm?.monthlyCapDays ?? 3}j
+              </Typography>
+            </>
+          }
+          sub="permissions motivées restantes"
+          subColor={perm && perm.remainingThisMonth <= 0 ? '#C0392B' : '#5D6D7E'}
+        />
+        <StatCard
+          label="Permissions cette année"
+          value={
+            <>
+              {perm?.remainingThisYear ?? 0}{' '}
+              <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>
+                / {perm?.annualCapDays ?? 10}j
+              </Typography>
+            </>
+          }
+          sub="permissions motivées restantes"
+          subColor={perm && perm.remainingThisYear <= 0 ? '#C0392B' : '#5D6D7E'}
+        />
       </Box>
 
       {quota && (

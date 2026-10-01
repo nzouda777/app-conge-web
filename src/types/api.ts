@@ -92,6 +92,7 @@ export interface EmployeeSupervisor {
   id: string;
   level: number;
   supervisorId: string;
+  supervisor?: { firstName: string; lastName: string; position: string };
 }
 
 export interface Employee {
@@ -229,7 +230,14 @@ export interface QuotaSummary {
     availableDays: number;
   };
   congeMaladie: { usedDaysThisYear: number };
-  permissionsMotivees: { usedDaysThisYear: number };
+  permissionsMotivees: {
+    usedDaysThisYear: number;
+    usedDaysThisMonth: number;
+    monthlyCapDays: number;
+    annualCapDays: number;
+    remainingThisMonth: number;
+    remainingThisYear: number;
+  };
 }
 
 export interface AppNotification {
