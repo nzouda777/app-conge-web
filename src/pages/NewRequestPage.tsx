@@ -27,6 +27,7 @@ import { listEmployees } from '../api/misc';
 import { getApiErrorMessage } from '../api/client';
 import type { LeaveRequest, PermissionSubType, RequestType } from '../types/api';
 import { PERMISSION_SUBTYPE_LABELS, REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
+import { tokens } from '../theme/tokens';
 
 const REQUIRES_ATTACHMENT: RequestType[] = ['CONGE_MALADIE', 'CONGE_MATERNITE', 'PERMISSION_EVENEMENT_FAMILIAL'];
 
@@ -39,6 +40,26 @@ const REPRISE_PRIOR_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'CONGE_MATERNITE', label: 'Congé de maternité' },
 ];
 
+// Bornes des dates, alignées sur celles de l'API
+// (apps/api/src/common/validators/exercise-date.ts). Les refuser ici évite à
+// l'utilisateur un aller-retour, mais c'est bien le serveur qui fait autorité :
+// une plage non bornée y coûtait 1,3 seconde de calcul bloquant.
+const now = new Date();
+const MIN_DATE = `${now.getUTCFullYear() - 1}-01-01`;
+const MAX_DATE = `${now.getUTCFullYear() + 2}-12-31`;
+
+function withinWindow(value: string): boolean {
+  return value >= MIN_DATE && value <= MAX_DATE;
+}
+
+const dateField = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} est requise.`)
+    .refine(withinWindow, {
+      message: `La date doit se situer entre le ${MIN_DATE.split('-').reverse().join('/')} et le ${MAX_DATE.split('-').reverse().join('/')}.`,
+    });
+
 const schema = z
   .object({
     type: z.enum([
@@ -50,13 +71,14 @@ const schema = z
       'ATTESTATION_PRESENCE',
     ]),
     permissionSubType: z.string().optional(),
-    startDate: z.string().min(1, 'La date de début est requise.'),
-    endDate: z.string().min(1, 'La date de fin est requise.'),
-    motif: z.string().optional(),
+    startDate: dateField('La date de début'),
+    endDate: dateField('La date de fin'),
+    // Borne haute alignée sur l'API : le refus arrivait sinon après envoi.
+    motif: z.string().max(2000, 'Le motif ne peut pas dépasser 2000 caractères.').optional(),
     interimEmployeeId: z.string().optional(),
     // REPRISE_SERVICE only — details of the note that granted the prior leave.
     // Optional: any left empty print as a blank "………" on the attestation.
-    repriseNoteNumber: z.string().optional(),
+    repriseNoteNumber: z.string().max(100, 'Numéro trop long.').optional(),
     repriseNoteDate: z.string().optional(),
     reprisePriorType: z.string().optional(),
     reprisePriorStartDate: z.string().optional(),
@@ -222,15 +244,15 @@ export function NewRequestPage() {
 
   return (
     <Box sx={{ maxWidth: 760 }}>
-      <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72', mb: 0.5 }}>
+      <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand, mb: 0.5 }}>
         Nouvelle demande
       </Typography>
-      <Typography sx={{ fontSize: 13, color: '#5D6D7E', mb: 3 }}>
+      <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mb: 3 }}>
         Remplissez le formulaire - les champs marqués * sont obligatoires
       </Typography>
 
       <Paper sx={{ borderRadius: 2 }}>
-        <Box sx={{ p: 2.5, borderBottom: '1px solid #f0f1f3' }}>
+        <Box sx={{ p: 2.5, borderBottom: `1px solid ${tokens.borderSoft}` }}>
           <Stepper activeStep={activeStep} alternativeLabel>
             {STEPS.map((label) => (
               <Step key={label}>
@@ -242,14 +264,14 @@ export function NewRequestPage() {
 
         <Box sx={{ p: 3 }}>
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            <Alert severity="error" role="alert" sx={{ mb: 2 }} onClose={() => setError(null)}>
               {error}
             </Alert>
           )}
 
           {activeStep === 0 && (
             <Stack spacing={2}>
-              <Typography sx={{ fontSize: 12, color: '#1B4F72', bgcolor: '#EBF5FB', p: 1.5, borderRadius: 1 }}>
+              <Typography sx={{ fontSize: 13, color: tokens.brand, bgcolor: tokens.infoSoft, p: 1.5, borderRadius: 1 }}>
                 Votre supérieur hiérarchique :{' '}
                 <strong>
                   {user?.employee?.manager
@@ -261,7 +283,14 @@ export function NewRequestPage() {
                 name="type"
                 control={control}
                 render={({ field }) => (
-                  <TextField {...field} select label="Type de demande" required>
+                  <TextField
+                    {...field}
+                    select
+                    label="Type de demande"
+                    required
+                    error={!!errors.type}
+                    helperText={errors.type?.message}
+                  >
                     {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
                       <MenuItem key={value} value={value}>
                         {label}
@@ -275,7 +304,14 @@ export function NewRequestPage() {
                   name="permissionSubType"
                   control={control}
                   render={({ field }) => (
-                    <TextField {...field} select label="Motif de la permission" required>
+                    <TextField
+                      {...field}
+                      select
+                      label="Motif de la permission"
+                      required
+                      error={!!errors.permissionSubType}
+                      helperText={errors.permissionSubType?.message}
+                    >
                       {Object.entries(PERMISSION_SUBTYPE_LABELS).map(([value, label]) => (
                         <MenuItem key={value} value={value}>
                           {label}
@@ -333,17 +369,23 @@ export function NewRequestPage() {
                       />
                     )}
                   />
-                  <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mt: 1 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand, mt: 1 }}>
                     Note administrative du congé précédent
                   </Typography>
-                  <Typography sx={{ fontSize: 12, color: '#5D6D7E', mt: -1 }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: -1 }}>
                     Détails de la note qui vous a accordé le congé. Les champs laissés vides apparaîtront en pointillés
                     sur l'attestation, à compléter à la main.
                   </Typography>
                   <Controller
                     name="repriseNoteNumber"
                     control={control}
-                    render={({ field }) => <TextField {...field} label="Numéro de la note" fullWidth />}
+                    render={({ field }) => <TextField
+                        {...field}
+                        label="Numéro de la note"
+                        fullWidth
+                        error={!!errors.repriseNoteNumber}
+                        helperText={errors.repriseNoteNumber?.message}
+                      />}
                   />
                   <Controller
                     name="repriseNoteDate"
@@ -355,14 +397,23 @@ export function NewRequestPage() {
                         label="Date de la note"
                         fullWidth
                         slotProps={{ inputLabel: { shrink: true } }}
-                      />
+                      
+                          error={!!errors.repriseNoteDate}
+                          helperText={errors.repriseNoteDate?.message}
+                        />
                     )}
                   />
                   <Controller
                     name="reprisePriorType"
                     control={control}
                     render={({ field }) => (
-                      <TextField {...field} select label="Type de congé accordé">
+                      <TextField
+                        {...field}
+                        select
+                        label="Type de congé accordé"
+                        error={!!errors.reprisePriorType}
+                        helperText={errors.reprisePriorType?.message}
+                      >
                         {REPRISE_PRIOR_TYPE_OPTIONS.map((o) => (
                           <MenuItem key={o.value} value={o.value}>
                             {o.label}
@@ -382,6 +433,9 @@ export function NewRequestPage() {
                           label="Congé précédent - du"
                           fullWidth
                           slotProps={{ inputLabel: { shrink: true } }}
+                        
+                          error={!!errors.reprisePriorStartDate}
+                          helperText={errors.reprisePriorStartDate?.message}
                         />
                       )}
                     />
@@ -395,6 +449,9 @@ export function NewRequestPage() {
                           label="au"
                           fullWidth
                           slotProps={{ inputLabel: { shrink: true } }}
+                        
+                          error={!!errors.reprisePriorEndDate}
+                          helperText={errors.reprisePriorEndDate?.message}
                         />
                       )}
                     />
@@ -446,7 +503,13 @@ export function NewRequestPage() {
                   name="interimEmployeeId"
                   control={control}
                   render={({ field }) => (
-                    <TextField {...field} select label="Intérimaire (facultatif)">
+                    <TextField
+                      {...field}
+                      select
+                      label="Intérimaire (facultatif)"
+                      error={!!errors.interimEmployeeId}
+                      helperText={errors.interimEmployeeId?.message ?? "Qui assure vos fonctions pendant votre absence."}
+                    >
                       <MenuItem value="">Aucun</MenuItem>
                       {employees?.items
                         .filter((e) => e.id !== user?.employeeId)
@@ -460,9 +523,13 @@ export function NewRequestPage() {
                 />
               )}
 
-              {/* Justificatif - shown only for the request types that require one. */}
+              {/* Justificatif : affiché uniquement pour les types qui en
+                  exigent un. Le proposer partout encombrait le formulaire
+                  d'un champ sans objet dans la plupart des cas. Une pièce
+                  reste joignable sur un brouillon depuis la fiche du dossier,
+                  pour les situations qui le justifient. */}
               {attachmentsRequired && (
-                <Stack spacing={1}>
+              <Stack spacing={1}>
                   <Alert severity="info">
                     Une pièce justificative est obligatoire pour ce type de demande (PDF, JPG ou PNG, 10 Mo max).
                   </Alert>
@@ -486,7 +553,7 @@ export function NewRequestPage() {
                   </Button>
                   {draft?.attachments.map((a) => (
                     <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography sx={{ fontSize: 13, flex: 1 }}>{a.originalName}</Typography>
+                      <Typography sx={{ fontSize: 14, flex: 1 }}>{a.originalName}</Typography>
                       <IconButton
                         size="small"
                         color="error"
@@ -499,7 +566,7 @@ export function NewRequestPage() {
                   ))}
                   {pendingFile && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography sx={{ fontSize: 13, flex: 1 }}>{pendingFile.name}</Typography>
+                      <Typography sx={{ fontSize: 14, flex: 1 }}>{pendingFile.name}</Typography>
                       <IconButton size="small" color="error" onClick={() => setPendingFile(null)}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -508,12 +575,12 @@ export function NewRequestPage() {
                   {uploadProgress !== null && (
                     <Box sx={{ maxWidth: 320 }}>
                       <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
-                      <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: 0.5 }}>
                         Téléchargement… {uploadProgress ?? 0}%
                       </Typography>
                     </Box>
                   )}
-                </Stack>
+              </Stack>
               )}
 
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -530,19 +597,19 @@ export function NewRequestPage() {
 
           {activeStep === 1 && draft && (
             <Stack spacing={2}>
-              <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Récapitulatif</Typography>
-              <Typography sx={{ fontSize: 13 }}>{REQUEST_TYPE_LABELS[draft.type]}</Typography>
+              <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Récapitulatif</Typography>
+              <Typography sx={{ fontSize: 14 }}>{REQUEST_TYPE_LABELS[draft.type]}</Typography>
               {isAttestation ? (
-                <Typography sx={{ fontSize: 13 }}>Attestation de présence effective au poste</Typography>
+                <Typography sx={{ fontSize: 14 }}>Attestation de présence effective au poste</Typography>
               ) : isReprise ? (
                 <Stack spacing={0.5}>
-                  <Typography sx={{ fontSize: 13 }}>Reprise de service le {formatDate(draft.startDate)}</Typography>
+                  <Typography sx={{ fontSize: 14 }}>Reprise de service le {formatDate(draft.startDate)}</Typography>
                   {(draft.repriseNoteNumber ||
                     draft.repriseNoteDate ||
                     draft.reprisePriorType ||
                     draft.reprisePriorStartDate ||
                     draft.reprisePriorEndDate) && (
-                    <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
+                    <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                       Note n°{draft.repriseNoteNumber || '………'}
                       {draft.repriseNoteDate ? ` du ${formatDate(draft.repriseNoteDate)}` : ''}
                       {draft.reprisePriorType
@@ -555,7 +622,7 @@ export function NewRequestPage() {
                   )}
                 </Stack>
               ) : (
-                <Typography sx={{ fontSize: 13 }}>
+                <Typography sx={{ fontSize: 14 }}>
                   Du {formatDate(draft.startDate)} au {formatDate(draft.endDate)} - {draft.calculatedDays} jour(s)
                 </Typography>
               )}
@@ -563,11 +630,11 @@ export function NewRequestPage() {
                 <Alert severity="warning">{draft.durationWarnings.join(' ')}</Alert>
               )}
               {draft.attachments.length > 0 && (
-                <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 14, color: tokens.inkSecondary }}>
                   Pièce justificative : {draft.attachments.map((a) => a.originalName).join(', ')}
                 </Typography>
               )}
-              <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
+              <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                 Cette demande sera transmise à : <strong>
                   {user?.employee?.manager
                     ? `${user.employee.manager.position}, ${user.employee.manager.firstName} ${user.employee.manager.lastName}`

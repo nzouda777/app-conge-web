@@ -10,6 +10,7 @@ import { EmployeeHistoryPanel } from './EmployeeHistoryPanel';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import { TONE_COLORS, type Tone } from '../theme/statusColors';
 import type { RequestType } from '../types/api';
+import { tokens } from '../theme/tokens';
 
 // Carte d'indicateur. La pastille colorée porte le sens ; le chiffre reste en
 // encre, jamais dans la couleur de la série.
@@ -31,12 +32,12 @@ function StatTile({
         <Box sx={{ width: 22, height: 22, borderRadius: 1, bgcolor: c.soft, display: 'grid', placeItems: 'center' }}>
           <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: c.main }} />
         </Box>
-        <Typography sx={{ fontSize: 10.5, color: '#5D6D7E', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
           {label}
         </Typography>
       </Box>
-      <Typography sx={{ fontSize: 26, fontWeight: 700, color: '#1B4F72', lineHeight: 1.1 }}>{value}</Typography>
-      {sub && <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.3 }}>{sub}</Typography>}
+      <Typography sx={{ fontSize: 26, fontWeight: 700, color: tokens.brand, lineHeight: 1.1 }}>{value}</Typography>
+      {sub && <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: 0.3 }}>{sub}</Typography>}
     </Paper>
   );
 }
@@ -47,11 +48,11 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-      <Typography sx={{ fontSize: 12.5, color: '#5D6D7E', flex: '0 0 45%' }}>{label}</Typography>
-      <Box sx={{ flex: 1, height: 8, borderRadius: 4, bgcolor: '#F2F4F7', overflow: 'hidden' }}>
+      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, flex: '0 0 45%' }}>{label}</Typography>
+      <Box sx={{ flex: 1, height: 8, borderRadius: 4, bgcolor: tokens.surfaceSunk, overflow: 'hidden' }}>
         <Box sx={{ width: `${pct}%`, height: '100%', bgcolor: color, borderRadius: 4 }} />
       </Box>
-      <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: '#1B4F72', flex: '0 0 30px', textAlign: 'right' }}>
+      <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.brand, flex: '0 0 30px', textAlign: 'right' }}>
         {value}
       </Typography>
     </Box>
@@ -78,13 +79,13 @@ function Step({ count, label, tone }: { count: number; label: string; tone: Tone
       >
         <Typography sx={{ fontSize: 16, fontWeight: 700, color: c.text }}>{count}</Typography>
       </Box>
-      <Typography sx={{ fontSize: 11, color: '#5D6D7E', lineHeight: 1.25 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, lineHeight: 1.25 }}>{label}</Typography>
     </Box>
   );
 }
 
 function Arrow() {
-  return <Box sx={{ flex: 1, height: 1.5, bgcolor: '#D8DFE6', minWidth: 14, mt: -2 }} />;
+  return <Box sx={{ flex: 1, height: 1.5, bgcolor: tokens.border, minWidth: 14, mt: -2 }} />;
 }
 
 // Vue de pilotage du circuit. Partagée par la SDAG, le Directeur Général et
@@ -122,8 +123,8 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
       {showHeading && (
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 3, gap: 2 }}>
           <Box>
-            <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72' }}>Tableau de bord</Typography>
-            <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
+            <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand }}>Tableau de bord</Typography>
+            <Typography sx={{ fontSize: 14, color: tokens.inkSecondary }}>
               Vue d'ensemble de la Direction Générale du Budget
             </Typography>
           </Box>
@@ -165,8 +166,8 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
       </Box>
 
       <Paper sx={{ p: 2.5, borderRadius: 2, mb: 2 }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Circuit des demandes</Typography>
-        <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 2 }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Circuit des demandes</Typography>
+        <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mb: 2 }}>
           Où se trouvent les dossiers de l'exercice
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', pb: 1 }}>
@@ -194,10 +195,10 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
               py: 0.8,
             }}
           >
-            <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: TONE_COLORS.danger.text }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: TONE_COLORS.danger.text }}>
               {stopped} dossier(s) arrêté(s)
             </Typography>
-            <Typography sx={{ fontSize: 11.5, color: '#5D6D7E' }}>
+            <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
               avis défavorable ou rejet en traitement
             </Typography>
           </Box>
@@ -207,8 +208,8 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '380px 1fr' }, gap: 1.5, mb: 2, alignItems: 'stretch' }}>
         <EmployeeHistoryPanel />
         <Paper sx={{ p: 2.5, borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Activité mensuelle</Typography>
-          <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Activité mensuelle</Typography>
+          <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mb: 1 }}>
             Demandes reçues et demandes clôturées · exercice {o?.year ?? year}
           </Typography>
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
@@ -219,8 +220,8 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Délais de traitement</Typography>
-          <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1.5 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Délais de traitement</Typography>
+          <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mb: 1.5 }}>
             Moyennes sur {o?.delays.decidedCount ?? 0} dossier(s) clôturé(s)
           </Typography>
           <Stack spacing={1}>
@@ -232,21 +233,21 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
               { l: 'Dans le délai', v: o?.onTimeShare === null || o?.onTimeShare === undefined ? '-' : `${o.onTimeShare} %` },
             ].map((r) => (
               <Box key={r.l} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography sx={{ fontSize: 12.5, color: '#5D6D7E' }}>{r.l}</Typography>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: '#1B4F72' }}>{r.v}</Typography>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>{r.l}</Typography>
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.brand }}>{r.v}</Typography>
               </Box>
             ))}
           </Stack>
         </Paper>
 
         <Paper sx={{ p: 2.5, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Par type de demande</Typography>
-          <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mb: 1.5 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Par type de demande</Typography>
+          <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mb: 1.5 }}>
             Demandes transmises · exercice {o?.year ?? year}
           </Typography>
           <Stack spacing={1.2}>
             {typeRows.map((r) => (
-              <BarRow key={r.t} label={REQUEST_TYPE_LABELS[r.t]} value={r.v} max={typeMax} color="#7FB3D5" />
+              <BarRow key={r.t} label={REQUEST_TYPE_LABELS[r.t]} value={r.v} max={typeMax} color={tokens.accentFill} />
             ))}
           </Stack>
         </Paper>
@@ -255,26 +256,26 @@ export function OverviewPage({ showHeading = true }: { showHeading?: boolean }) 
 
       {mine.length > 0 && (
         <Paper sx={{ borderRadius: 2, mt: 1.5 }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid #f0f1f3', display: 'flex', justifyContent: 'space-between' }}>
-            <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>En attente de votre avis</Typography>
+          <Box sx={{ p: 2, borderBottom: `1px solid ${tokens.borderSoft}`, display: 'flex', justifyContent: 'space-between' }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>En attente de votre avis</Typography>
             <Button component={RouterLink} to="/manager" size="small">
               Voir tout →
             </Button>
           </Box>
-          <Stack divider={<Box sx={{ borderBottom: '1px solid #f5f6fa' }} />}>
+          <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
             {mine.map((r) => (
               <Box
                 key={r.id}
                 component={RouterLink}
                 to={`/requests/${r.id}`}
-                sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none', color: 'inherit', '&:hover': { bgcolor: '#FAFBFC' } }}
+                sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none', color: 'inherit', '&:hover': { bgcolor: tokens.surfaceSunk } }}
               >
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>{r.reference}</Typography>
-                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>{r.reference}</Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>
                     {r.employee.firstName} {r.employee.lastName} · {REQUEST_TYPE_LABELS[r.type]}
                   </Typography>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                     {formatDate(r.startDate)} → {formatDate(r.endDate)}
                   </Typography>
                 </Box>

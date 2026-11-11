@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Greeting } from '../components/Greeting';
 import { OverviewPage } from './OverviewPage';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
+import { tokens } from '../theme/tokens';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -55,13 +56,13 @@ export function DashboardPage() {
           value={
             <>
               {available}{' '}
-              <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>
+              <Typography component="span" sx={{ fontSize: 14, color: tokens.inkSecondary }}>
                 / {entitlement}j
               </Typography>
             </>
           }
           sub={`${consumedPct}% consommés`}
-          subColor={available <= 0 ? '#C0392B' : '#5D6D7E'}
+          subColor={available <= 0 ? tokens.dangerFill : tokens.inkSecondary}
         />
         {/* Les permissions motivées sont les seules plafonnées : mariage,
             décès et paternité gardent leur durée légale et n'entament pas ce
@@ -71,32 +72,32 @@ export function DashboardPage() {
           value={
             <>
               {perm?.remainingThisMonth ?? 0}{' '}
-              <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>
+              <Typography component="span" sx={{ fontSize: 14, color: tokens.inkSecondary }}>
                 / {perm?.monthlyCapDays ?? 3}j
               </Typography>
             </>
           }
           sub="permissions motivées restantes"
-          subColor={perm && perm.remainingThisMonth <= 0 ? '#C0392B' : '#5D6D7E'}
+          subColor={perm && perm.remainingThisMonth <= 0 ? tokens.dangerFill : tokens.inkSecondary}
         />
         <StatCard
           label="Permissions cette année"
           value={
             <>
               {perm?.remainingThisYear ?? 0}{' '}
-              <Typography component="span" sx={{ fontSize: 14, color: '#5D6D7E' }}>
+              <Typography component="span" sx={{ fontSize: 14, color: tokens.inkSecondary }}>
                 / {perm?.annualCapDays ?? 10}j
               </Typography>
             </>
           }
           sub="permissions motivées restantes"
-          subColor={perm && perm.remainingThisYear <= 0 ? '#C0392B' : '#5D6D7E'}
+          subColor={perm && perm.remainingThisYear <= 0 ? tokens.dangerFill : tokens.inkSecondary}
         />
       </Box>
 
       {quota && (
         <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 1 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand, mb: 1 }}>
             Solde congé annuel {quota.year}
           </Typography>
           <LinearProgress
@@ -104,7 +105,7 @@ export function DashboardPage() {
             value={Math.min(100, consumedPct)}
             sx={{ height: 8, borderRadius: 4, mb: 1 }}
           />
-          <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>
+          <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
             {quota.congeAnnuel.usedDays}j utilisés · {quota.congeAnnuel.pendingDays}j en attente de décision ·{' '}
             {available}j disponibles sur {entitlement}j
           </Typography>
@@ -112,29 +113,29 @@ export function DashboardPage() {
       )}
 
       <Paper sx={{ borderRadius: 2 }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid #f0f1f3', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Demandes récentes</Typography>
+        <Box sx={{ p: 2, borderBottom: `1px solid ${tokens.borderSoft}`, display: 'flex', justifyContent: 'space-between' }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Demandes récentes</Typography>
           <Button component={RouterLink} to="/requests" size="small">
             Voir tout →
           </Button>
         </Box>
-        <Stack divider={<Box sx={{ borderBottom: '1px solid #f5f6fa' }} />}>
+        <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
           {myRequests?.items.length === 0 && (
-            <Typography sx={{ p: 2, fontSize: 13, color: '#5D6D7E' }}>Aucune demande pour le moment.</Typography>
+            <Typography sx={{ p: 2, fontSize: 14, color: tokens.inkSecondary }}>Aucune demande pour le moment.</Typography>
           )}
           {myRequests?.items.map((r) => (
             <Box key={r.id} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>
                   {r.reference ?? 'Brouillon'}
                 </Typography>
-                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{REQUEST_TYPE_LABELS[r.type]}</Typography>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{REQUEST_TYPE_LABELS[r.type]}</Typography>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}
                 </Typography>
               </Box>
               {r.calculatedDays !== null && (
-                <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72' }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.brand }}>
                   {r.calculatedDays} jour(s)
                 </Typography>
               )}

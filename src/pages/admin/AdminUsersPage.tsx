@@ -39,6 +39,7 @@ import {
   createAdminUser,
   deactivateAdminUser,
   deleteAdminUser,
+  reissueProvisionalPasswords,
   listAdminEmployees,
   listAdminUsers,
   reactivateAdminUser,
@@ -50,8 +51,10 @@ import {
 import { listOrganizationUnits } from '../../api/organization';
 import { getApiErrorMessage } from '../../api/client';
 import { ROLE_LABELS } from '../../types/labels';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
-import type { AdminUser, Role } from '../../types/api';
+import { StepUpDialog } from '../../components/StepUpDialog';
+import { CredentialsSheet } from '../../components/CredentialsSheet';
+import { tokens } from '../../theme/tokens';
+import type { AdminUser, ProvisionalCredential, Role } from '../../types/api';
 import type { AdminUserSortField } from '../../api/admin';
 import { PersonnelImportDialog } from './PersonnelImportDialog';
 
@@ -112,46 +115,102 @@ export function AdminUsersPage() {
     queryClient.invalidateQueries({ queryKey: ['admin', 'employees'] });
   }
 
+  // Confirmation visible de ce qui vient d'être fait : seul le changement de
+  // puce sur la ligne le signalait, ce qui passe inaperçu sur une liste longue.
+  const [notice, setNotice] = useState<string | null>(null);
+
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => deactivateAdminUser(id),
-    onSuccess: invalidate,
+    onSuccess: (u) => {
+      invalidate();
+      setNotice(`Compte de ${u.employee.firstName} ${u.employee.lastName} désactivé. Ses sessions ouvertes cessent immédiatement d'être valides.`);
+    },
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de désactiver ce compte.')),
   });
   const reactivateMutation = useMutation({
     mutationFn: (id: string) => reactivateAdminUser(id),
-    onSuccess: invalidate,
+    onSuccess: (u) => {
+      invalidate();
+      setNotice(`Compte de ${u.employee.firstName} ${u.employee.lastName} réactivé.`);
+    },
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de réactiver ce compte.')),
   });
+
+  // Réémission groupée des mots de passe provisoires, pour les comptes jamais
+  // activés. L'interface promettait cette voie de récupération — « si la liste
+  // est perdue, il faudra réémettre les mots de passe des comptes jamais
+  // activés » — sans l'offrir nulle part : le point d'entrée existait côté API
+  // et côté client, mais aucun écran ne l'appelait.
+  const [reissueOpen, setReissueOpen] = useState(false);
+  const reissueMutation = useMutation({
+    mutationFn: (password: string) => reissueProvisionalPasswords(password),
+    onSuccess: (res) => {
+      setReissueOpen(false);
+      setStepUpError(null);
+      invalidate();
+      if (res.credentials.length > 0) {
+        setCredentials(res.credentials);
+        setCredentialsPdf(res.credentialsPdf);
+      }
+      else setNotice("Aucun compte jamais activé : rien à réémettre.");
+    },
+    onError: (e) => setStepUpError(getApiErrorMessage(e, 'Impossible de réémettre les mots de passe.')),
+  });
+  // Supprimer un compte exige désormais le mot de passe de l'administrateur,
+  // redemandé au moment de l'acte.
+  const [stepUpError, setStepUpError] = useState<string | null>(null);
+  // Mots de passe provisoires à remettre, affichés une seule fois.
+  const [credentials, setCredentials] = useState<ProvisionalCredential[] | null>(null);
+  // Document de distribution produit par le serveur, reçu dans la même
+  // réponse que les identifiants.
+  const [credentialsPdf, setCredentialsPdf] = useState<string | null>(null);
+
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteAdminUser(id),
+    mutationFn: ({ id, password }: { id: string; password: string }) => deleteAdminUser(id, password),
     onSuccess: () => {
       invalidate();
       setDeleteUser(null);
+      setStepUpError(null);
     },
-    onError: (e) => setError(getApiErrorMessage(e, 'Impossible de supprimer ce compte.')),
+    onError: (e) => setStepUpError(getApiErrorMessage(e, 'Impossible de supprimer ce compte.')),
   });
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box>
-          <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72' }}>Utilisateurs</Typography>
-          <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
-            Créer, modifier, désactiver ou supprimer des comptes de connexion.
+          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 600, color: tokens.brand }}>
+            Utilisateurs
+          </Typography>
+          <Typography sx={{ color: tokens.inkSecondary }}>
+            Créer, modifier, désactiver ou supprimer des comptes de connexion. Les mots de passe
+            sont générés par le système et remis en main propre : l'administration ne les choisit
+            pas et ne les connaît qu'une fois.
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setCreateOpen(true)}>
-          Créer un utilisateur
-        </Button>
+        <Stack direction="row" spacing={1.5}>
+          <Button startIcon={<KeyIcon />} onClick={() => setReissueOpen(true)}>
+            Réémettre les mots de passe
+          </Button>
+          <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setCreateOpen(true)}>
+            Créer un utilisateur
+          </Button>
+        </Stack>
       </Box>
 
+      {notice && (
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
+
       {listError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }}>
           {getApiErrorMessage(listError, 'Impossible de charger les utilisateurs.')}
         </Alert>
       )}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
@@ -265,14 +324,14 @@ export function AdminUsersPage() {
             {users?.items.map((u) => (
               <TableRow key={u.id} hover>
                 <TableCell>
-                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>
                     {u.employee.firstName} {u.employee.lastName}
                   </Typography>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>{u.email}</Typography>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>{u.email}</Typography>
                 </TableCell>
-                <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{u.employee.matricule}</TableCell>
-                <TableCell sx={{ fontSize: 12 }}>{u.employee.organizationUnit?.name ?? '-'}</TableCell>
-                <TableCell sx={{ fontSize: 12 }}>{ROLE_LABELS[u.role]}</TableCell>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>{u.employee.matricule}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}>{u.employee.organizationUnit?.name ?? '-'}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}>{ROLE_LABELS[u.role]}</TableCell>
                 <TableCell>
                   <Chip
                     size="small"
@@ -314,7 +373,7 @@ export function AdminUsersPage() {
             ))}
             {users?.items.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={6} sx={{ color: '#5D6D7E', fontSize: 13 }}>
+                <TableCell colSpan={6} sx={{ color: tokens.inkSecondary, fontSize: 14 }}>
                   Aucun utilisateur.
                 </TableCell>
               </TableRow>
@@ -346,9 +405,15 @@ export function AdminUsersPage() {
       {createOpen && (
         <CreateUserDialog
           onClose={() => setCreateOpen(false)}
-          onCreated={() => {
+          // Le mot de passe provisoire remonte ici et DOIT être affiché : le
+          // serveur ne le conserve pas en clair. L'argument était ignoré, de
+          // sorte qu'un compte créé était immédiatement inutilisable — personne
+          // ne pouvait s'y connecter, et rien ne le signalait.
+          onCreated={(credential, pdf) => {
             setCreateOpen(false);
             invalidate();
+            setCredentials([credential]);
+            setCredentialsPdf(pdf);
           }}
         />
       )}
@@ -358,27 +423,73 @@ export function AdminUsersPage() {
       )}
 
       {resetPasswordUser && (
-        <ResetPasswordDialog user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} />
+        <ResetPasswordDialog
+          user={resetPasswordUser}
+          onClose={() => setResetPasswordUser(null)}
+          onIssued={(credential, pdf) => {
+            setResetPasswordUser(null);
+            setCredentials([credential]);
+            setCredentialsPdf(pdf);
+          }}
+        />
       )}
 
-      <ConfirmDialog
+      <StepUpDialog
         open={!!deleteUser}
         title="Supprimer ce compte ?"
         description={
           deleteUser
-            ? `Le compte de ${deleteUser.employee.firstName} ${deleteUser.employee.lastName} (${deleteUser.email}) sera définitivement supprimé. La fiche employé et l'historique de ses demandes sont conservés - seul l'accès à l'application est retiré. Cette action est irréversible.`
+            ? `Le compte de ${deleteUser.employee.firstName} ${deleteUser.employee.lastName} (${deleteUser.email}) sera supprimé. La fiche de l'agent et l'historique de ses demandes sont conservés : seul l'accès à l'application est retiré.`
             : ''
         }
+        consequence="Sans retour possible. Préférez la désactivation si l'agent est susceptible de revenir — elle se défait, et préserve mieux la lisibilité de l'historique."
         confirmLabel="Supprimer"
         loading={deleteMutation.isPending}
-        onCancel={() => setDeleteUser(null)}
-        onConfirm={() => deleteUser && deleteMutation.mutate(deleteUser.id)}
+        error={stepUpError}
+        onCancel={() => {
+          setDeleteUser(null);
+          setStepUpError(null);
+        }}
+        onConfirm={(password) => deleteUser && deleteMutation.mutate({ id: deleteUser.id, password })}
+      />
+
+      {/* Mots de passe provisoires, affichés UNE SEULE FOIS : le serveur ne les
+          conserve pas en clair. */}
+      <StepUpDialog
+        open={reissueOpen}
+        title="Réémettre les mots de passe provisoires ?"
+        description="Tous les comptes qui ne se sont JAMAIS connectés recevront un nouveau mot de passe provisoire, affiché une seule fois pour impression et remise. Les comptes déjà utilisés ne sont pas touchés."
+        consequence="À n'utiliser que si la liste initiale a été perdue. Les agents concernés ne pourront pas se connecter avec l'ancienne valeur."
+        confirmLabel="Réémettre"
+        loading={reissueMutation.isPending}
+        error={stepUpError}
+        onCancel={() => {
+          setReissueOpen(false);
+          setStepUpError(null);
+        }}
+        onConfirm={(password) => reissueMutation.mutate(password)}
+      />
+
+      <CredentialsSheet
+        open={!!credentials}
+        credentials={credentials ?? []}
+        pdfBase64={credentialsPdf}
+        onClose={() => {
+          setCredentials(null);
+          setCredentialsPdf(null);
+        }}
       />
     </Box>
   );
 }
 
-function CreateUserDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateUserDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (credential: ProvisionalCredential, pdfBase64: string) => void;
+}) {
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [employeeId, setEmployeeId] = useState('');
   const [matricule, setMatricule] = useState('');
@@ -389,39 +500,51 @@ function CreateUserDialog({ onClose, onCreated }: { onClose: () => void; onCreat
   const [organizationUnitId, setOrganizationUnitId] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('AGENT');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Ré-authentification : créer un compte attribue des droits dans le circuit.
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const { data: employees } = useQuery({ queryKey: ['admin', 'employees'], queryFn: listAdminEmployees });
+  // Agents sans compte, pour le sélecteur. La liste est désormais paginée
+  // côté serveur : on demande explicitement ceux qui n'ont pas encore de
+  // compte, plutôt que de rapatrier les 1 500 fiches pour les filtrer ici.
+  const { data: employees } = useQuery({
+    queryKey: ['admin', 'employees', 'without-user'],
+    queryFn: () => listAdminEmployees({ withoutUser: true, pageSize: 200 }),
+  });
   const { data: orgUnits } = useQuery({ queryKey: ['organization-units'], queryFn: listOrganizationUnits });
-  const availableEmployees = (employees ?? []).filter((e) => !e.user);
+  const availableEmployees = employees?.items ?? [];
 
   const createMutation = useMutation({
     mutationFn: (input: CreateUserInput) => createAdminUser(input),
-    onSuccess: onCreated,
+    // Le mot de passe provisoire n'est renvoyé qu'ici : il remonte à la page,
+    // qui l'affiche dans la feuille de remise.
+    onSuccess: (res) => onCreated(res.credential, res.credentialsPdf),
     onError: (e) => setError(getApiErrorMessage(e, "Impossible de créer l'utilisateur.")),
   });
 
-  function submit() {
+  function submit(confirmPassword: string) {
     setError(null);
+    const base = { email, role, confirmPassword };
     const input: CreateUserInput =
       mode === 'existing'
-        ? { employeeId, email, role, password }
-        : { matricule, firstName, lastName, position, status, organizationUnitId, email, role, password };
+        ? { ...base, employeeId }
+        : { ...base, matricule, firstName, lastName, position, status, organizationUnitId };
     createMutation.mutate(input);
   }
 
+  // Le mot de passe du compte créé n'est plus saisi ici : il est tiré au sort
+  // par le serveur et remis à l'intéressé.
   const canSubmit =
     mode === 'existing'
-      ? !!employeeId && !!email && !!password
-      : !!matricule && !!firstName && !!lastName && !!position && !!organizationUnitId && !!email && !!password;
+      ? !!employeeId && !!email
+      : !!matricule && !!firstName && !!lastName && !!position && !!organizationUnitId && !!email;
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Créer un utilisateur</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          {error && <Alert severity="error" role="alert">{error}</Alert>}
           <ToggleButtonGroup value={mode} exclusive onChange={(_, v) => v && setMode(v)} size="small">
             <ToggleButton value="existing">Employé existant</ToggleButton>
             <ToggleButton value="new">Nouvel employé</ToggleButton>
@@ -470,22 +593,35 @@ function CreateUserDialog({ onClose, onCreated }: { onClose: () => void; onCreat
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            label="Mot de passe"
-            type="text"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            helperText="Communiquez-le à l'agent - il pourra le changer plus tard."
-          />
+          <Alert severity="info" sx={{ fontSize: 14 }}>
+            Le mot de passe est généré par le système et affiché une seule fois à l'écran suivant,
+            pour remise en main propre. Vous ne le choisissez pas : un administrateur capable de
+            fixer le mot de passe d'un agent peut agir sous son identité, et le dossier porterait
+            alors la signature de l'agent.
+          </Alert>
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Annuler</Button>
-        <Button variant="contained" disabled={!canSubmit || createMutation.isPending} onClick={submit}>
+        <Button
+          variant="contained"
+          disabled={!canSubmit || createMutation.isPending}
+          onClick={() => setConfirmOpen(true)}
+        >
           Créer
         </Button>
       </DialogActions>
+
+      <StepUpDialog
+        open={confirmOpen}
+        title="Créer ce compte ?"
+        description={`Un compte ${ROLE_LABELS[role]} sera ouvert pour ${email}, avec un mot de passe provisoire à remettre à l'intéressé.`}
+        confirmLabel="Créer le compte"
+        loading={createMutation.isPending}
+        error={error}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={submit}
+      />
     </Dialog>
   );
 }
@@ -507,6 +643,7 @@ function EditUserDialog({
   const [status, setStatus] = useState(user.employee.status);
   const [organizationUnitId, setOrganizationUnitId] = useState(user.employee.organizationUnitId);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: orgUnits } = useQuery({ queryKey: ['organization-units'], queryFn: listOrganizationUnits });
 
@@ -516,6 +653,8 @@ function EditUserDialog({
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de mettre à jour cet utilisateur.')),
   });
 
+  const roleChanged = role !== user.role;
+
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
@@ -523,7 +662,7 @@ function EditUserDialog({
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          {error && <Alert severity="error" role="alert">{error}</Alert>}
           <Stack direction="row" spacing={2}>
             <TextField label="Prénom" fullWidth value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             <TextField label="Nom" fullWidth value={lastName} onChange={(e) => setLastName(e.target.value)} />
@@ -557,67 +696,76 @@ function EditUserDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Annuler</Button>
-        <Button
-          variant="contained"
-          disabled={updateMutation.isPending}
-          onClick={() =>
-            updateMutation.mutate({
-              email,
-              role,
-              employee: { firstName, lastName, position, status, organizationUnitId },
-            })
-          }
-        >
+        <Button variant="contained" disabled={updateMutation.isPending} onClick={() => setConfirmOpen(true)}>
           Enregistrer
         </Button>
       </DialogActions>
+
+      <StepUpDialog
+        open={confirmOpen}
+        title="Enregistrer les modifications ?"
+        description={`La fiche de ${user.employee.firstName} ${user.employee.lastName} sera mise à jour.`}
+        consequence={
+          roleChanged
+            ? `Le rôle passe de « ${ROLE_LABELS[user.role]} » à « ${ROLE_LABELS[role]} ». Cela redistribue des droits dans le circuit de validation, et sera consigné au journal d'audit sous une entrée distincte.`
+            : undefined
+        }
+        confirmLabel="Enregistrer"
+        loading={updateMutation.isPending}
+        error={error}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={(confirmPassword) =>
+          updateMutation.mutate({
+            confirmPassword,
+            email,
+            role,
+            employee: { firstName, lastName, position, status, organizationUnitId },
+          })
+        }
+      />
     </Dialog>
   );
 }
 
-function ResetPasswordDialog({ user, onClose }: { user: AdminUser; onClose: () => void }) {
-  const [newPassword, setNewPassword] = useState('');
-  const [done, setDone] = useState(false);
+function ResetPasswordDialog({
+  user,
+  onClose,
+  onIssued,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onIssued: (credential: ProvisionalCredential, pdfBase64: string) => void;
+}) {
   const [error, setError] = useState<string | null>(null);
 
+  // L'administrateur ne CHOISIT plus le mot de passe : le serveur en tire un au
+  // sort et le renvoie une seule fois, pour remise à l'intéressé.
+  //
+  // Auparavant l'administrateur le saisissait, et le connaissait donc : il
+  // pouvait se connecter au compte et agir sous l'identité de son titulaire —
+  // rendre un avis hiérarchique, valider un congé — le dossier portant la
+  // signature de la victime. La réinitialisation était journalisée, mais pas ce
+  // qui s'ensuivait.
   const mutation = useMutation({
-    mutationFn: () => resetAdminUserPassword(user.id, newPassword),
-    onSuccess: () => setDone(true),
+    mutationFn: (password: string) => resetAdminUserPassword(user.id, password),
+    onSuccess: (res) => onIssued(res.credential, res.credentialsPdf),
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de réinitialiser le mot de passe.')),
   });
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>
-        Réinitialiser le mot de passe - {user.employee.firstName} {user.employee.lastName}
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          {done ? (
-            <Alert severity="success">Mot de passe réinitialisé.</Alert>
-          ) : (
-            <TextField
-              autoFocus
-              label="Nouveau mot de passe"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{done ? 'Fermer' : 'Annuler'}</Button>
-        {!done && (
-          <Button
-            variant="contained"
-            disabled={newPassword.length < 4 || mutation.isPending}
-            onClick={() => mutation.mutate()}
-          >
-            Réinitialiser
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+    <StepUpDialog
+      open
+      title={`Réinitialiser le mot de passe de ${user.employee.firstName} ${user.employee.lastName} ?`}
+      description="Un mot de passe provisoire sera tiré au sort et affiché une seule fois, pour remise en main propre. L'agent devra en changer dès sa première connexion."
+      consequence="Toutes les sessions ouvertes de ce compte seront immédiatement fermées. Si l'agent est en train de travailler, il sera déconnecté."
+      confirmLabel="Réinitialiser"
+      loading={mutation.isPending}
+      error={error}
+      onCancel={onClose}
+      onConfirm={(password) => {
+        setError(null);
+        mutation.mutate(password);
+      }}
+    />
   );
 }

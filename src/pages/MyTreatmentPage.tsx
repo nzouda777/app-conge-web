@@ -7,6 +7,7 @@ import { listSdagRequests } from '../api/sdag';
 import { StatusBadge } from '../components/StatusBadge';
 import { REQUEST_TYPE_LABELS, formatDate, formatDateTime } from '../types/labels';
 import type { RequestStatus } from '../types/api';
+import { tokens } from '../theme/tokens';
 
 // Les dossiers cotés à l'agent de traitement connecté. Le serveur restreint
 // déjà la liste à ceux qui lui sont affectés : cette page n'ouvre aucun accès
@@ -29,23 +30,23 @@ export function MyTreatmentPage() {
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72', mb: 0.5 }}>
+      <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand, mb: 0.5 }}>
         Mes dossiers à traiter
       </Typography>
-      <Typography sx={{ fontSize: 13, color: '#5D6D7E', mb: 3 }}>
+      <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mb: 3 }}>
         Dossiers qui vous ont été cotés par la Sous-Direction des Affaires Générales
       </Typography>
 
       <Paper sx={{ borderRadius: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: '1px solid #e8eaed', px: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: `1px solid ${tokens.borderSoft}`, px: 1 }}>
           {TABS.map((t) => (
-            <Tab key={t.label} label={t.label} sx={{ fontSize: 13, textTransform: 'none' }} />
+            <Tab key={t.label} label={t.label} sx={{ fontSize: 14, textTransform: 'none' }} />
           ))}
         </Tabs>
-        <Stack divider={<Box sx={{ borderBottom: '1px solid #f5f6fa' }} />}>
-          {isLoading && <Typography sx={{ p: 2, fontSize: 13 }}>Chargement…</Typography>}
+        <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
+          {isLoading && <Typography sx={{ p: 2, fontSize: 14 }}>Chargement…</Typography>}
           {data?.items.length === 0 && !isLoading && (
-            <Typography sx={{ p: 2, fontSize: 13, color: '#5D6D7E' }}>
+            <Typography sx={{ p: 2, fontSize: 14, color: tokens.inkSecondary }}>
               {tab === 0
                 ? "Aucun dossier ne vous est coté pour l'instant."
                 : "Vous n'avez encore traité aucun dossier."}
@@ -57,16 +58,16 @@ export function MyTreatmentPage() {
               <Box key={r.id} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.4 }}>
-                    <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
+                    <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>
                       {r.reference}
                     </Typography>
                     <StatusBadge status={r.status} request={r} user={user} />
                   </Box>
-                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>
                     {r.employee.firstName} {r.employee.lastName} · {REQUEST_TYPE_LABELS[r.type]}
                     {r.calculatedDays ? ` · ${r.calculatedDays} jour(s)` : ''}
                   </Typography>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                     {formatDate(r.startDate)} → {formatDate(r.endDate)}
                     {assignedAt ? ` · reçu le ${formatDateTime(assignedAt)}` : ''}
                   </Typography>

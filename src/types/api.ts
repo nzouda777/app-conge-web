@@ -32,6 +32,10 @@ export type RequestStatus =
   | 'PENDING_ASSIGNMENT'
   | 'ASSIGNED'
   | 'RETURNED_TO_SDAG_DIRECTOR'
+  // Présent dans l'énumération Prisma et jamais produit par le circuit actuel,
+  // mais des dossiers anciens peuvent le porter : l'omettre ici laissait
+  // REQUEST_STATUS_LABELS incomplet, donc un affichage vide.
+  | 'UNDER_REVIEW'
   | 'APPROVED'
   | 'REJECTED';
 
@@ -123,6 +127,56 @@ export interface AuthUser {
   // so a Chef de Service, a Sous-Directeur and the Directeur Général all
   // qualify. Absent on older tokens/profiles — treat undefined as false.
   hasSubordinates?: boolean;
+  // Interface sur laquelle la session a été ouverte. L'administration a sa
+  // propre interface, servie sur une autre origine.
+  surface?: 'agent' | 'admin';
+  // Mot de passe provisoire non encore changé. Tant qu'il vaut true, l'API
+  // refuse tout sauf la lecture du profil et le changement de mot de passe.
+  mustChangePassword?: boolean;
+}
+
+// Une ligne du journal d'audit, telle que l'écran d'administration la reçoit.
+export interface AuditEntry {
+  id: string;
+  actorId: string | null;
+  actorLabel: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  requestId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  actor: { email: string; role: Role } | null;
+}
+
+export interface AuditDigest {
+  failedLogins24h: number;
+  lockouts7d: number;
+  passwordResets7d: number;
+  purges7d: number;
+  roleChanges7d: number;
+  topFailedLoginSources: { ip: string | null; count: number }[];
+}
+
+export interface AuditFacets {
+  actions: { value: string; count: number }[];
+  entityTypes: { value: string; count: number }[];
+  sensitiveActions: string[];
+}
+
+// Identifiants provisoires renvoyés UNE SEULE FOIS par l'API, pour impression
+// et remise en main propre. Jamais stockés en clair côté serveur.
+export interface ProvisionalCredential {
+  matricule: string;
+  fullName: string;
+  position: string;
+  /** Structure de rattachement (service, bureau, cellule). */
+  organizationUnit: string;
+  /** Direction de rattachement : c'est elle qui ordonne le document remis. */
+  direction: string;
+  password: string;
 }
 
 export interface Attachment {
@@ -253,11 +307,27 @@ export interface AppNotification {
 
 export interface ApiError {
   code: string;
-  message: string;
+  message: string | string[];
   details?: unknown;
+  // Identifiant de corrélation renvoyé par l'API dans chaque réponse d'erreur,
+  // et repris dans l'en-tête X-Request-Id. L'utilisateur peut le citer ;
+  // l'administrateur retrouve alors la requête exacte dans le journal d'audit.
+  requestId?: string;
 }
 
-export interface AdminEmployee extends Employee {
+// Forme RÉELLEMENT renvoyée par /admin/employees, qui applique un `select`
+// restreint. Elle n'étend plus `Employee` : l'héritage déclarait
+// `organizationUnitId` et `managerId` comme présents alors que le serveur ne
+// les renvoie pas — le type mentait, et TypeScript ne pouvait rien signaler.
+export interface AdminEmployee {
+  id: string;
+  matricule: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  status: EmployeeStatus;
+  organizationUnit: { id: string; name: string; code: string };
+  manager: { id: string; firstName: string; lastName: string } | null;
   user?: { id: string } | null;
 }
 

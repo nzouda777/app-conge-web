@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -13,8 +14,8 @@ import {
 } from '@mui/material';
 import { changePassword } from '../api/auth';
 import { getApiErrorMessage } from '../api/client';
-
-const MIN_LENGTH = 8;
+import { tokens } from '../theme/tokens';
+import { PasswordRequirements, passwordIssues } from './PasswordRequirements';
 
 // Changement de mot de passe par le titulaire du compte. Le mot de passe
 // actuel est exigé — le serveur le vérifie aussi, cette saisie n'est pas un
@@ -48,22 +49,28 @@ export function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de modifier le mot de passe.')),
   });
 
-  const tooShort = next.length > 0 && next.length < MIN_LENGTH;
+  // Les règles viennent de PasswordRequirements, qui reprend exactement la
+  // politique appliquée par l'API. Ce dialogue exigeait 8 caractères quand le
+  // serveur en demande 12 : le bouton s'activait sur un mot de passe que le
+  // serveur allait refuser.
+  const issues = passwordIssues(next);
   const mismatch = confirm.length > 0 && next !== confirm;
   const canSubmit =
-    current.length > 0 && next.length >= MIN_LENGTH && next === confirm && !mutation.isPending;
+    current.length > 0 && issues.length === 0 && next === confirm && !mutation.isPending;
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="xs">
-      <DialogTitle sx={{ fontSize: 16, color: '#1B4F72' }}>Modifier mon mot de passe</DialogTitle>
+      <DialogTitle sx={{ fontSize: 16, color: tokens.brand }}>Modifier mon mot de passe</DialogTitle>
       <DialogContent>
         {done ? (
-          <Alert severity="success" sx={{ mt: 1 }}>
-            Votre mot de passe a été modifié. Il sera demandé à votre prochaine connexion.
+          <Alert severity="success" role="status" sx={{ mt: 1 }}>
+            Votre mot de passe a été modifié. Par sécurité, toutes vos sessions ouvertes — y
+            compris celle-ci — viennent d'être fermées : reconnectez-vous avec le nouveau mot de
+            passe.
           </Alert>
         ) : (
           <Stack spacing={2} sx={{ mt: 1 }}>
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && <Alert severity="error" role="alert">{error}</Alert>}
             <TextField
               label="Mot de passe actuel"
               type="password"
@@ -73,16 +80,18 @@ export function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose
               fullWidth
               autoFocus
             />
-            <TextField
-              label="Nouveau mot de passe"
-              type="password"
-              autoComplete="new-password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              fullWidth
-              error={tooShort}
-              helperText={tooShort ? `${MIN_LENGTH} caractères minimum.` : `${MIN_LENGTH} caractères minimum.`}
-            />
+            <Box>
+              <TextField
+                label="Nouveau mot de passe"
+                type="password"
+                autoComplete="new-password"
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+                fullWidth
+                error={next.length > 0 && issues.length > 0}
+              />
+              <PasswordRequirements value={next} />
+            </Box>
             <TextField
               label="Confirmer le nouveau mot de passe"
               type="password"
@@ -93,7 +102,7 @@ export function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose
               error={mismatch}
               helperText={mismatch ? 'Les deux saisies ne correspondent pas.' : ' '}
             />
-            <Typography sx={{ fontSize: 11.5, color: '#5D6D7E' }}>
+            <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
               Votre mot de passe actuel est demandé pour confirmer qu'il s'agit bien de vous.
             </Typography>
           </Stack>

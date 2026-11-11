@@ -2,26 +2,35 @@ import { useState } from 'react';
 import { Alert, Box, Button, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { takeRedirectAfterLogin, useAuth } from '../auth/AuthContext';
 import { getApiErrorMessage } from '../api/client';
+import { tokens } from '../theme/tokens';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, sessionNotice } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [matricule, setMatricule] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Déjà connecté : on ne réaffiche pas le formulaire.
+  if (user) return <Navigate to="/dashboard" replace />;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const me = await login(matricule, password);
-      navigate(me.role === 'ADMIN' ? '/admin' : '/dashboard');
+      await login(matricule, password);
+      // On revient à la page demandée avant la redirection. L'utilisateur
+      // atterrissait systématiquement sur le tableau de bord, quelle que soit
+      // la page qu'il cherchait à ouvrir.
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(from ?? takeRedirectAfterLogin() ?? '/dashboard', { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, 'Matricule ou mot de passe incorrect.'));
     } finally {
@@ -32,13 +41,15 @@ export function LoginPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#f5f6fa',
+        bgcolor: tokens.appBackground,
         p: 2,
       }}
+      component="main"
+      id="contenu-principal"
     >
       <Box sx={{ width: '100%', maxWidth: 400 }}>
         <Box sx={{ textAlign: 'center', mb: 3 }}>
@@ -48,12 +59,21 @@ export function LoginPage() {
             alt="DGB Request"
             sx={{ height: 64, maxWidth: '100%', mb: 1 }}
           />
-          <Typography sx={{ fontSize: 12, color: '#5D6D7E', mt: 0.5 }}>
-            Ministère des Finances - Direction Générale du Budget
+          <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mt: 0.5 }}>
+            Ministère des Finances — Direction Générale du Budget
           </Typography>
         </Box>
         <Paper sx={{ p: 3.5, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 15, fontWeight: 600, color: '#1B4F72', mb: 2.5 }}>Connexion</Typography>
+          <Typography component="h1" sx={{ fontSize: 17, fontWeight: 600, color: tokens.brand, mb: 2.5 }}>
+            Connexion
+          </Typography>
+          {/* Message affiché après une session tombée : l'application
+              redirigeait vers la connexion sans jamais dire pourquoi. */}
+          {sessionNotice && (
+            <Alert severity="info" role="status" sx={{ mb: 2 }}>
+              {sessionNotice}
+            </Alert>
+          )}
           <form onSubmit={handleSubmit}>
             <TextField
               label="Matricule"
@@ -61,7 +81,7 @@ export function LoginPage() {
               fullWidth
               required
               margin="normal"
-              size="small"
+              autoComplete="username"
               value={matricule}
               onChange={(e) => setMatricule(e.target.value)}
               placeholder="1149105B"
@@ -72,7 +92,7 @@ export function LoginPage() {
               fullWidth
               required
               margin="normal"
-              size="small"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               slotProps={{
@@ -84,9 +104,8 @@ export function LoginPage() {
                         onClick={() => setShowPassword((v) => !v)}
                         onMouseDown={(e) => e.preventDefault()}
                         edge="end"
-                        size="small"
                       >
-                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -94,7 +113,9 @@ export function LoginPage() {
               }}
             />
             {error && (
-              <Alert severity="error" sx={{ mt: 1.5 }}>
+              // `role="alert"` : sans lui, un lecteur d'écran n'annonce jamais
+              // l'échec de la connexion.
+              <Alert severity="error" role="alert" sx={{ mt: 1.5 }}>
                 {error}
               </Alert>
             )}
@@ -102,12 +123,12 @@ export function LoginPage() {
               {loading ? 'Connexion…' : 'Se connecter'}
             </Button>
           </form>
-          <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 12, color: '#5D6D7E' }}>
-            Mot de passe oublié ? Contacter la SDAG
+          <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 14, color: tokens.inkSecondary }}>
+            Mot de passe oublié ? Contactez la SDAG : un mot de passe provisoire vous sera remis.
           </Typography>
         </Paper>
-        <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 11, color: '#95A5A6' }}>
-          Système sécurisé - Usage strictement réservé au personnel DGB
+        <Typography sx={{ textAlign: 'center', mt: 2, fontSize: 14, color: tokens.inkMuted }}>
+          Usage strictement réservé au personnel de la DGB. Toute connexion est journalisée.
         </Typography>
       </Box>
     </Box>

@@ -18,6 +18,7 @@ import { employeeHistoryDocumentUrl, fetchEmployeeHistory } from '../api/request
 import { StatusBadge } from '../components/StatusBadge';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import type { Employee, RequestType } from '../types/api';
+import { tokens } from '../theme/tokens';
 
 // Consultation en lecture seule de l'historique d'un agent : on le cherche par
 // nom ou matricule, on filtre par exercice et/ou type, et la fiche
@@ -46,8 +47,8 @@ export function EmployeeHistoryPanel() {
   return (
     <Paper sx={{ borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2.5, pb: 1.5 }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Historique par agent</Typography>
-        <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mt: 0.3, mb: 2 }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Historique par agent</Typography>
+        <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: 0.3, mb: 2 }}>
           Recherchez un agent par son nom ou son matricule
         </Typography>
 
@@ -123,10 +124,10 @@ export function EmployeeHistoryPanel() {
 
             {history && (
               <Box sx={{ mt: 1.5 }}>
-                <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>
                   {history.employee.firstName} {history.employee.lastName}
                 </Typography>
-                <Typography sx={{ fontSize: 11.5, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                   {history.employee.matricule} · {history.employee.position}
                 </Typography>
               </Box>
@@ -139,20 +140,20 @@ export function EmployeeHistoryPanel() {
           voisin, quel que soit le nombre de demandes. */}
       <Box sx={{ flex: 1, minHeight: 190, maxHeight: 300, overflowY: 'auto', px: 2.5, pb: 2 }}>
         {!selected && (
-          <Typography sx={{ fontSize: 12.5, color: '#5D6D7E' }}>Aucun agent sélectionné.</Typography>
+          <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Aucun agent sélectionné.</Typography>
         )}
-        {selected && isLoading && <Typography sx={{ fontSize: 12.5 }}>Chargement…</Typography>}
+        {selected && isLoading && <Typography sx={{ fontSize: 13 }}>Chargement…</Typography>}
 
         {selected && history && (
           <>
             {history.totals.length > 0 && (
               <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.8, mb: 1.5 }}>
                 {history.totals.map((t) => (
-                  <Box key={t.type} sx={{ px: 1.2, py: 0.6, borderRadius: 1.5, bgcolor: '#F7F9FB' }}>
-                    <Typography sx={{ fontSize: 10.5, color: '#5D6D7E' }}>
+                  <Box key={t.type} sx={{ px: 1.2, py: 0.6, borderRadius: 1.5, bgcolor: tokens.surfaceSunk }}>
+                    <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                       {REQUEST_TYPE_LABELS[t.type]}
                     </Typography>
-                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72' }}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.brand }}>
                       {t.count} demande(s)
                       {t.approvedDays > 0 ? ` · ${t.approvedDays} j` : ''}
                     </Typography>
@@ -162,13 +163,13 @@ export function EmployeeHistoryPanel() {
             )}
 
             {history.items.length === 0 ? (
-              <Typography sx={{ fontSize: 12.5, color: '#5D6D7E' }}>
+              <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                 Aucune demande sur ce périmètre.
               </Typography>
             ) : (
               /* Liste plutôt que tableau : six colonnes ne tiennent pas dans
                  une demi-largeur sans devenir illisibles. */
-              <Stack divider={<Box sx={{ borderBottom: '1px solid #F5F6FA' }} />}>
+              <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
                 {history.items.map((r) => (
                   <Box
                     key={r.id}
@@ -181,18 +182,18 @@ export function EmployeeHistoryPanel() {
                       gap: 1,
                       textDecoration: 'none',
                       color: 'inherit',
-                      '&:hover': { bgcolor: '#FAFBFC' },
+                      '&:hover': { bgcolor: tokens.surfaceSunk },
                     }}
                   >
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 10.5, color: '#5D6D7E', fontFamily: 'monospace' }}>
+                      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>
                         {r.reference ?? '-'}
                       </Typography>
-                      <Typography sx={{ fontSize: 12.5, fontWeight: 500 }} noWrap>
+                      <Typography sx={{ fontSize: 13, fontWeight: 500 }} noWrap>
                         {REQUEST_TYPE_LABELS[r.type]}
                         {r.calculatedDays ? ` · ${r.calculatedDays} j` : ''}
                       </Typography>
-                      <Typography sx={{ fontSize: 11, color: '#5D6D7E' }} noWrap>
+                      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }} noWrap>
                         {r.type === 'ATTESTATION_PRESENCE'
                           ? formatDate(r.startDate)
                           : `${formatDate(r.startDate)} → ${formatDate(r.endDate)}`}

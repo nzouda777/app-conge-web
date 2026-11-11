@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import { listProcessingTargets, saveProcessingTargets, type TargetStage } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
+import { tokens } from '../../theme/tokens';
 
 // Les étapes contrôlables, dans l'ordre du circuit.
 const STAGES: { stage: TargetStage; label: string; help: string }[] = [
@@ -33,11 +34,19 @@ export function AdminTargetsPage() {
     setValues(next);
   }, [targets]);
 
+  // `Number('')` vaut 0, mais `Number('abc')` vaut NaN — et un champ de type
+  // `number` accepte « e », « + » et « - ». Le NaN partait jusqu'au serveur,
+  // qui le refusait par une erreur peu parlante. On normalise ici, et le
+  // bouton reste bloqué tant qu'une valeur est inexploitable.
+  const parsed = STAGES.map((s) => {
+    const raw = (values[s.stage] ?? '').trim();
+    const n = raw === '' ? 0 : Number(raw);
+    return { stage: s.stage, days: n, valid: Number.isInteger(n) && n >= 0 && n <= 365 };
+  });
+  const allValid = parsed.every((p) => p.valid);
+
   const mutation = useMutation({
-    mutationFn: () =>
-      saveProcessingTargets(
-        STAGES.map((s) => ({ stage: s.stage, days: Number(values[s.stage] || 0) })),
-      ),
+    mutationFn: () => saveProcessingTargets(parsed.map(({ stage, days }) => ({ stage, days }))),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'processing-targets'] });
       queryClient.invalidateQueries({ queryKey: ['requests', 'overview'] });
@@ -49,20 +58,20 @@ export function AdminTargetsPage() {
 
   return (
     <Box sx={{ maxWidth: 760 }}>
-      <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72', mb: 0.5 }}>
+      <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand, mb: 0.5 }}>
         Délais de traitement
       </Typography>
-      <Typography sx={{ fontSize: 13, color: '#5D6D7E', mb: 3 }}>
+      <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mb: 3 }}>
         Durées cibles, en jours, au-delà desquelles un dossier est signalé en retard
       </Typography>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       {saved && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSaved(false)}>
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setSaved(false)}>
           Délais enregistrés. Le tableau de bord en tient compte immédiatement.
         </Alert>
       )}
@@ -77,8 +86,8 @@ export function AdminTargetsPage() {
           {STAGES.map((s) => (
             <Box key={s.stage} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: '#1B4F72' }}>{s.label}</Typography>
-                <Typography sx={{ fontSize: 11.5, color: '#5D6D7E' }}>{s.help}</Typography>
+                <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: tokens.brand }}>{s.label}</Typography>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>{s.help}</Typography>
               </Box>
               <TextField
                 size="small"
@@ -89,13 +98,23 @@ export function AdminTargetsPage() {
                   setSaved(false);
                   setValues((v) => ({ ...v, [s.stage]: e.target.value }));
                 }}
+                error={!parsed.find((p) => p.stage === s.stage)?.valid}
+                helperText={
+                  parsed.find((p) => p.stage === s.stage)?.valid
+                    ? ' '
+                    : 'Nombre entier de 0 à 365.'
+                }
                 slotProps={{ htmlInput: { min: 0, max: 365 } }}
-                sx={{ width: 120 }}
+                sx={{ width: 150 }}
               />
             </Box>
           ))}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="contained" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+            <Button
+              variant="contained"
+              disabled={mutation.isPending || !allValid}
+              onClick={() => mutation.mutate()}
+            >
               {mutation.isPending ? 'Enregistrement…' : 'Enregistrer'}
             </Button>
           </Box>

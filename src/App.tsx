@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './auth/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MyRequestsPage } from './pages/MyRequestsPage';
@@ -9,24 +8,21 @@ import { ManagerRequestsPage } from './pages/ManagerRequestsPage';
 import { SdagPage } from './pages/SdagPage';
 import { MyTreatmentPage } from './pages/MyTreatmentPage';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { AdminUsersPage } from './pages/admin/AdminUsersPage';
-import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
-import { AdminDecisionsPage } from './pages/admin/AdminDecisionsPage';
-import { AdminTargetsPage } from './pages/admin/AdminTargetsPage';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { OverviewPage } from './pages/OverviewPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { NotFoundPage } from './components/NotFoundPage';
 
-// ADMIN has its own separate space — send it to /admin instead of the
-// normal operational dashboard whenever we'd otherwise land on  "/". 
-function RootRedirect() {
-  const { user } = useAuth();
-  return <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/dashboard'} replace />;
-}
-
+// Routes de l'interface DU PERSONNEL.
+//
+// Les écrans d'administration n'en font plus partie : ils vivent dans un build
+// distinct (src/AdminApp.tsx), servi sur une autre origine avec son propre
+// cookie de session. Une faille d'exécution de script dans cette interface-ci
+// ne peut donc plus atteindre la console d'administration.
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
       <Route
         path="/dashboard"
         element={
@@ -43,7 +39,9 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      {/* Any DGB staff member may file a request - every non-ADMIN role. */}
+      {/* Tout agent de la DGB peut déposer une demande, quel que soit son
+          poste. Seul le Directeur Général en est exclu : il arbitre, il ne
+          demande pas. */}
       <Route
         path="/requests/new"
         element={
@@ -68,13 +66,12 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      {/* Vue d'ensemble du circuit, en lecture seule. C'est le tableau de bord
-          du Directeur Général ; le Sous-Directeur SDAG et l'administration y
-          accèdent par cette route dédiée. */}
+      {/* Vue d'ensemble du circuit, en lecture seule : tableau de bord du
+          Directeur Général, auquel le Sous-Directeur SDAG accède aussi. */}
       <Route
         path="/vue-ensemble"
         element={
-          <ProtectedRoute roles={['DIRECTEUR_GENERAL', 'SOUS_DIRECTEUR_SDAG', 'ADMIN', 'TEST_INTEGRAL']}>
+          <ProtectedRoute roles={['DIRECTEUR_GENERAL', 'SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL']}>
             <OverviewPage />
           </ProtectedRoute>
         }
@@ -90,8 +87,6 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      {/* Les agents de traitement n'ont plus la vue d'ensemble de la SDAG,
-          qui relève du Sous-Directeur : ils ont leur propre file. */}
       <Route
         path="/mes-dossiers"
         element={
@@ -103,7 +98,7 @@ export default function App() {
       <Route
         path="/sdag"
         element={
-          <ProtectedRoute roles={['SOUS_DIRECTEUR_SDAG', 'ADMIN', 'TEST_INTEGRAL']}>
+          <ProtectedRoute roles={['SOUS_DIRECTEUR_SDAG', 'TEST_INTEGRAL']}>
             <SdagPage />
           </ProtectedRoute>
         }
@@ -116,40 +111,20 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Une adresse inconnue affiche une vraie page « introuvable ». Elle
+          redirigeait silencieusement vers le tableau de bord : un lien périmé
+          ou une faute de frappe ramenait l'utilisateur à l'accueil sans qu'il
+          comprenne pourquoi sa page n'était pas là. */}
       <Route
-        path="/admin"
+        path="*"
         element={
-          <ProtectedRoute roles={['ADMIN']}>
-            <AdminUsersPage />
+          <ProtectedRoute>
+            <NotFoundPage />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/admin/delais"
-        element={
-          <ProtectedRoute roles={['ADMIN']}>
-            <AdminTargetsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/requests"
-        element={
-          <ProtectedRoute roles={['ADMIN']}>
-            <AdminRequestsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/decisions"
-        element={
-          <ProtectedRoute roles={['ADMIN']}>
-            <AdminDecisionsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="*" element={<RootRedirect />} />
     </Routes>
   );
 }

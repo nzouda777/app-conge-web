@@ -1,5 +1,6 @@
 import { Box, Paper, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
+import { tokens } from '../theme/tokens';
 
 export function StatCard({
   label,
@@ -26,18 +27,18 @@ export function StatCard({
             alignItems: 'center',
             justifyContent: 'center',
             mb: 1,
-            bgcolor: '#EBF5FB',
+            bgcolor: tokens.infoSoft,
           }}
         >
           {icon}
         </Box>
       )}
-      <Typography sx={{ fontSize: 11, color: '#5D6D7E', textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.5 }}>
+      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.5 }}>
         {label}
       </Typography>
-      <Typography sx={{ fontSize: 24, fontWeight: 600, color: '#1B4F72', mb: 0.5 }}>{value}</Typography>
+      <Typography sx={{ fontSize: 24, fontWeight: 600, color: tokens.brand, mb: 0.5 }}>{value}</Typography>
       {sub && (
-        <Typography sx={{ fontSize: 11, color: subColor ?? '#5D6D7E' }}>{sub}</Typography>
+        <Typography sx={{ fontSize: 13, color: subColor ?? tokens.inkSecondary }}>{sub}</Typography>
       )}
     </Paper>
   );

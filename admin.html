@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Administration — DGB Request</title>
+    <!--
+      Interface d'administration, servie sur une ORIGINE DISTINCTE de celle du
+      personnel (voir Caddyfile). Elle utilise un cookie de session distinct et
+      une session plus courte, et le proxy peut en restreindre l'accès au
+      réseau de la Direction — impossible tant que tout partageait un domaine.
+      Elle n'est volontairement PAS installable : une console d'administration
+      n'a pas vocation à vivre sur un écran d'accueil de téléphone.
+    -->
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/svg+xml" href="/icon-dgb-request.svg" />
+    <meta name="theme-color" content="#133850" />
+    <meta name="color-scheme" content="light" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      Cette interface nécessite JavaScript.
+    </noscript>
+    <script type="module" src="/src/main-admin.tsx"></script>
+  </body>
+</html>

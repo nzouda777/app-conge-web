@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hors connexion — DGB Request</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: #F2F5F7; color: #16222E;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 15px; line-height: 1.6;
+  }
+  .card {
+    max-width: 480px; background: #fff; border: 1px solid #E6EBEF; border-radius: 8px; padding: 32px;
+  }
+  h1 { font-size: 20px; margin: 0 0 12px; color: #1B4F72; }
+  p { margin: 0 0 14px; color: #4A5A68; }
+  ul { margin: 0 0 20px; padding-left: 20px; color: #4A5A68; }
+  li { margin-bottom: 6px; }
+  button {
+    font: inherit; font-weight: 500; min-height: 40px; padding: 0 20px;
+    background: #1B4F72; color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+  }
+  button:focus-visible { outline: 3px solid #1A6796; outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Vous êtes hors connexion</h1>
+    <p>
+      L'application n'a pas pu joindre le serveur. Vos demandes et vos avis ne sont pas
+      enregistrés tant que la connexion n'est pas rétablie.
+    </p>
+    <ul>
+      <li>Vérifiez le réseau de votre poste ou la connexion de données.</li>
+      <li>Rien n'a été perdu : aucune action n'a été envoyée à moitié.</li>
+      <li>Rouvrez l'application dès que la connexion revient.</li>
+    </ul>
+    <button type="button" onclick="location.reload()">Réessayer</button>
+  </main>
+</body>
+</html>

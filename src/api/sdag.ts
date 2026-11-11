@@ -36,3 +36,16 @@ export async function submitDecision(
   });
   return data;
 }
+
+// Annulation d'une décision déjà prise, sur motif obligatoire, réservée au
+// Sous-Directeur SDAG. Le dossier revient à l'étape qui précède sa décision et
+// les soldes de congé suivent le mouvement en sens inverse.
+//
+// Il n'existait aucun chemin sortant de APPROVED, REJECTED ou
+// MANAGER_REJECTED : une validation par erreur ne se corrigeait qu'en base.
+export async function cancelDecision(id: string, reason: string) {
+  const { data } = await apiClient.post<LeaveRequest>(`/sdag/requests/${id}/cancel-decision`, {
+    reason,
+  });
+  return data;
+}

@@ -4,6 +4,7 @@ import { Alert, Box, Button, MenuItem, Paper, Stack, TextField, Typography } fro
 import { listAnnualLeaveDecisions, upsertAnnualLeaveDecision } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import type { EmployeeStatus } from '../../types/api';
+import { tokens } from '../../theme/tokens';
 
 const CATEGORIES: { value: EmployeeStatus; label: string; hint: string }[] = [
   { value: 'CIVIL_SERVANT', label: 'Fonctionnaires', hint: 'Décision accordant les congés aux fonctionnaires' },
@@ -22,8 +23,8 @@ export function AdminDecisionsPage() {
 
   return (
     <Box sx={{ maxWidth: 820 }}>
-      <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72' }}>Décisions ministérielles</Typography>
-      <Typography sx={{ fontSize: 13, color: '#5D6D7E', mb: 2 }}>
+      <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand }}>Décisions ministérielles</Typography>
+      <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mb: 2 }}>
         Chaque année, le Ministre des Finances signe deux décisions accordant les congés annuels (une pour les
         fonctionnaires, une pour les agents relevant du Code du travail). Saisissez ici leur numéro et leur date : ils
         sont repris automatiquement dans les demandes de congé annuel de l'exercice.
@@ -99,15 +100,15 @@ function DecisionCard({
 
   return (
     <Paper sx={{ p: 2.5, borderRadius: 2 }}>
-      <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#1B4F72' }}>{label}</Typography>
-      <Typography sx={{ fontSize: 12, color: '#5D6D7E', mb: 1.5 }}>{hint}</Typography>
+      <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>{label}</Typography>
+      <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mb: 1.5 }}>{hint}</Typography>
       {error && (
-        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>
+        <Alert severity="error" role="alert" sx={{ mb: 1.5 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       {saved && (
-        <Alert severity="success" sx={{ mb: 1.5 }} onClose={() => setSaved(false)}>
+        <Alert severity="success" role="status" sx={{ mb: 1.5 }} onClose={() => setSaved(false)}>
           Décision enregistrée pour l'exercice {year}.
         </Alert>
       )}

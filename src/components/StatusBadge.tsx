@@ -33,7 +33,7 @@ export function StatusBadge({
         bgcolor: c.soft,
         color: c.text,
         border: `1px solid ${c.main}33`,
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: 600,
         lineHeight: 1.4,
         whiteSpace: 'nowrap',

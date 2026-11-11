@@ -26,7 +26,7 @@ export function ConfirmDialog({
     <Dialog open={open} onClose={onCancel} fullWidth maxWidth="sm">
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText sx={{ fontSize: 13 }}>{description}</DialogContentText>
+        <DialogContentText sx={{ fontSize: 14 }}>{description}</DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel} disabled={loading}>

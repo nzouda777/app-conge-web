@@ -18,10 +18,26 @@ export async function fetchSubordinates() {
   return data;
 }
 
-export async function listNotifications(unreadOnly = false) {
-  const { data } = await apiClient.get<AppNotification[]>('/notifications', {
-    params: unreadOnly ? { unread: 'true' } : {},
+// Liste paginée. Le plafond était fixe à 100 sans pagination : au-delà,
+// l'historique des notifications devenait inaccessible.
+export async function listNotifications(
+  unreadOnly = false,
+  params: { page?: number; pageSize?: number } = {},
+) {
+  const { data } = await apiClient.get<{
+    items: AppNotification[];
+    total: number;
+    unread: number;
+    page: number;
+    pageSize: number;
+  }>('/notifications', {
+    params: { ...(unreadOnly ? { unread: 'true' } : {}), ...params },
   });
+  return data;
+}
+
+export async function markAllNotificationsRead() {
+  const { data } = await apiClient.post<{ marked: number }>('/notifications/read-all');
   return data;
 }
 

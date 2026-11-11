@@ -16,13 +16,13 @@
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
     "@tanstack/react-query": "^5.101.4",
-    "axios": "^1.18.1",
+    "axios": "^1.21.0",
     "date-fns": "^4.4.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.82.0",
     "react-router-dom": "^7.18.1",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
@@ -31,6 +31,10 @@
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.3.6"
+  },
+  "overrides": {
+    "source-map-js": "^1.2.2",
+    "follow-redirects": "^1.16.2"
   }
 }

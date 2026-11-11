@@ -33,17 +33,20 @@ import {
   submitRequest,
   uploadAttachment,
 } from '../api/requests';
-import { assignRequest, submitDecision } from '../api/sdag';
+import { assignRequest, cancelDecision, submitDecision } from '../api/sdag';
 import { listEmployees } from '../api/misc';
 import { StatusBadge } from '../components/StatusBadge';
 import { getApiErrorMessage } from '../api/client';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   PERMISSION_SUBTYPE_LABELS,
+  REQUEST_STATUS_LABELS,
   REQUEST_TYPE_LABELS,
   formatDate,
   formatDateTime,
 } from '../types/labels';
 import type { Attachment } from '../types/api';
+import { tokens } from '../theme/tokens';
 
 // The validated, signed document is the one the agent de traitement dropped
 // on the dossier — as opposed to the requester's own justificatifs. It is
@@ -93,6 +96,19 @@ export function RequestDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   }
 
+  // Confirmation des décisions ENGAGEANTES.
+  //
+  // « Avis favorable » et « Valider » déclenchaient directement leur mutation,
+  // sans la moindre confirmation. La validation produit la décision officielle,
+  // consomme le solde de congé de l'agent et notifie tout le monde : un clic
+  // mal placé était irrattrapable, la table des transitions n'offrant aucun
+  // chemin sortant de APPROVED. Les suppressions administratives, elles,
+  // étaient déjà gardées — l'asymétrie était frappante.
+  const [confirmAction, setConfirmAction] = useState<'manager-favorable' | 'sdag-approve' | null>(null);
+  // Annulation d'une décision déjà prise, réservée au Sous-Directeur SDAG.
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
   const submitMutation = useMutation({
     mutationFn: () => submitRequest(requestId),
     onSuccess: () => {
@@ -131,6 +147,20 @@ export function RequestDetailPage() {
       setError(null);
     },
     onError: (e) => setError(getApiErrorMessage(e, "Impossible de coter cette demande.")),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (reason: string) => cancelDecision(requestId, reason),
+    onSuccess: () => {
+      invalidate();
+      setCancelOpen(false);
+      setCancelReason('');
+      setNotice(
+        "Décision annulée. Le dossier est revenu à l'étape précédente, et les jours de congé ont suivi.",
+      );
+      setError(null);
+    },
+    onError: (e) => setError(getApiErrorMessage(e, "Impossible d'annuler cette décision.")),
   });
 
   const decisionMutation = useMutation({
@@ -225,7 +255,12 @@ export function RequestDetailPage() {
   // Date de cotation : c'est le moment où l'agent de traitement a reçu le
   // dossier.
   const assignedAt = request.sdagAssignments?.at(-1)?.createdAt;
-  const hasAction = canSubmit || canManagerReview || canAssign || canDecideAsAgent;
+  // Le Sous-Directeur SDAG est seul habilité à revenir sur une décision prise :
+  // c'est lui qui arbitre le circuit.
+  const canCancelDecision =
+    (user?.role === 'SOUS_DIRECTEUR_SDAG' || isTest) &&
+    ['APPROVED', 'REJECTED', 'MANAGER_REJECTED'].includes(request.status);
+  const hasAction = canSubmit || canManagerReview || canAssign || canDecideAsAgent || canCancelDecision;
 
   // Où en est le dossier, dit en une phrase, pour celui qui n'a rien à y
   // faire dans l'immédiat.
@@ -326,51 +361,51 @@ export function RequestDetailPage() {
           {/* Colonne principale (gauche) : toutes les informations, remontées
               pour occuper l'espace face à la colonne statut. */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
+            <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>
               {request.reference ?? 'Brouillon (pas encore soumis)'}
             </Typography>
-            <Typography sx={{ fontSize: 18, fontWeight: 600, color: '#1B4F72' }}>
+            <Typography sx={{ fontSize: 18, fontWeight: 600, color: tokens.brand }}>
               {REQUEST_TYPE_LABELS[request.type]}
               {request.permissionSubType ? ` - ${PERMISSION_SUBTYPE_LABELS[request.permissionSubType]}` : ''}
             </Typography>
-            <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
+            <Typography sx={{ fontSize: 14, color: tokens.inkSecondary }}>
               {request.employee.firstName} {request.employee.lastName} · {request.employee.organizationUnit?.name}
             </Typography>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 2, mt: 2, mb: 2 }}>
               {request.type === 'ATTESTATION_PRESENCE' ? (
                 <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Objet</Typography>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Objet</Typography>
                   <Typography sx={{ fontSize: 14 }}>Attestation de présence effective au poste</Typography>
                 </Box>
               ) : request.type === 'REPRISE_SERVICE' ? (
                 <Box>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Date de reprise de service</Typography>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Date de reprise de service</Typography>
                   <Typography sx={{ fontSize: 14 }}>{formatDate(request.startDate)}</Typography>
                 </Box>
               ) : (
                 <>
                   <Box>
-                    <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Du</Typography>
+                    <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Du</Typography>
                     <Typography sx={{ fontSize: 14 }}>{formatDate(request.startDate)}</Typography>
                   </Box>
                   <Box>
-                    <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Au</Typography>
+                    <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Au</Typography>
                     <Typography sx={{ fontSize: 14 }}>{formatDate(request.endDate)}</Typography>
                   </Box>
                 </>
               )}
               {request.calculatedDays !== null && request.calculatedDays > 0 && (
                 <Box>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Durée calculée</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#1B4F72' }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Durée calculée</Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>
                     {request.calculatedDays} jour(s)
                   </Typography>
                 </Box>
               )}
               {request.interimEmployee && (
                 <Box>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Intérimaire</Typography>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Intérimaire</Typography>
                   <Typography sx={{ fontSize: 14 }}>
                     {request.interimEmployee.firstName} {request.interimEmployee.lastName}
                   </Typography>
@@ -380,15 +415,15 @@ export function RequestDetailPage() {
 
             {request.motif && request.type !== 'ATTESTATION_PRESENCE' && (
               <Box sx={{ mb: 2 }}>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Motif</Typography>
-                <Typography sx={{ fontSize: 13 }}>{request.motif}</Typography>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Motif</Typography>
+                <Typography sx={{ fontSize: 14 }}>{request.motif}</Typography>
               </Box>
             )}
 
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72', mb: 1 }}>Pièces justificatives</Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.brand, mb: 1 }}>Pièces justificatives</Typography>
             <Stack spacing={0.5} sx={{ mb: canSubmit ? 1.5 : 0 }}>
               {visibleAttachments.length === 0 && (
-                <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>Aucune pièce jointe.</Typography>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Aucune pièce jointe.</Typography>
               )}
               {visibleAttachments.map((a) => (
                 <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -396,7 +431,7 @@ export function RequestDetailPage() {
                     href={attachmentDownloadUrl(request.id, a.id)}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ fontSize: 13, color: '#2E86C1' }}
+                    style={{ fontSize: 14, color: tokens.accentFill }}
                   >
                     {a.originalName} ({Math.round(a.size / 1024)} Ko)
                   </a>
@@ -437,7 +472,7 @@ export function RequestDetailPage() {
             {canSubmit && uploadMutation.isPending && (
               <Box sx={{ maxWidth: 320, mt: 1 }}>
                 <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: 0.5 }}>
                   Téléchargement… {uploadProgress ?? 0}%
                 </Typography>
               </Box>
@@ -456,12 +491,12 @@ export function RequestDetailPage() {
           >
             <StatusBadge status={request.status} request={request} user={user} />
             {rejectionComment && (
-              <Typography sx={{ fontSize: 12, color: '#C0392B', textAlign: 'inherit' }}>{rejectionComment}</Typography>
+              <Typography sx={{ fontSize: 13, color: tokens.dangerFill, textAlign: 'inherit' }}>{rejectionComment}</Typography>
             )}
             {latestObservation && (
               <Box sx={{ textAlign: 'inherit' }}>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>Observation de l'agent de traitement</Typography>
-                <Typography sx={{ fontSize: 12.5 }}>{latestObservation}</Typography>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>Observation de l'agent de traitement</Typography>
+                <Typography sx={{ fontSize: 13 }}>{latestObservation}</Typography>
               </Box>
             )}
             {canDownloadDocument && (
@@ -481,14 +516,14 @@ export function RequestDetailPage() {
                 qui traîne ne désigne personne. */}
             {request.currentAssignee && (
               <Box sx={{ textAlign: 'inherit', mt: 0.5 }}>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                   {isDecided ? 'Traité par' : 'En traitement chez'}
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 500 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
                   {request.currentAssignee.firstName} {request.currentAssignee.lastName}
                 </Typography>
                 {assignedAt && (
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                     Reçu le {formatDateTime(assignedAt)}
                   </Typography>
                 )}
@@ -499,12 +534,12 @@ export function RequestDetailPage() {
       </Paper>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       {notice && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
           {notice}
         </Alert>
       )}
@@ -514,8 +549,8 @@ export function RequestDetailPage() {
           laissait croire que la page s'était vidée. */}
       {!hasAction && (
         <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 1 }}>Suivi</Typography>
-          <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>{followUpText}</Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand, mb: 1 }}>Suivi</Typography>
+          <Typography sx={{ fontSize: 14, color: tokens.inkSecondary }}>{followUpText}</Typography>
           {backTo && (
             <Button component={RouterLink} to={backTo.to} size="small" sx={{ mt: 1.5, px: 0 }}>
               ← {backTo.label}
@@ -526,7 +561,7 @@ export function RequestDetailPage() {
 
       {hasAction && (
         <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 2 }}>Actions</Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand, mb: 2 }}>Actions</Typography>
 
           {canSubmit && (
             <Button variant="contained" onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
@@ -541,7 +576,7 @@ export function RequestDetailPage() {
                 color="success"
                 startIcon={<CheckCircleIcon />}
                 disabled={managerReviewMutation.isPending}
-                onClick={() => managerReviewMutation.mutate({ decision: 'FAVORABLE' })}
+                onClick={() => setConfirmAction('manager-favorable')}
               >
                 {managerReviewMutation.isPending ? 'Enregistrement…' : 'Avis favorable'}
               </Button>
@@ -555,6 +590,18 @@ export function RequestDetailPage() {
                 Avis défavorable
               </Button>
             </Stack>
+          )}
+
+          {canCancelDecision && (
+            <Box>
+              <Typography sx={{ mb: 1.5, color: tokens.inkSecondary }}>
+                Ce dossier est déjà décidé. Si la décision a été prise par erreur, vous pouvez la
+                reprendre : le dossier revient à l'étape précédente et les jours de congé suivent.
+              </Typography>
+              <Button variant="outlined" color="warning" onClick={() => setCancelOpen(true)}>
+                Annuler la décision
+              </Button>
+            </Box>
           )}
 
           {canAssign && (
@@ -583,10 +630,10 @@ export function RequestDetailPage() {
                   return (
                     <li {...props} key={e.id}>
                       <Box>
-                        <Typography sx={{ fontSize: 13 }}>
+                        <Typography sx={{ fontSize: 14 }}>
                           {e.firstName} {e.lastName}
                         </Typography>
-                        <Typography sx={{ fontSize: 11, color: isRequester ? '#C0392B' : '#5D6D7E' }}>
+                        <Typography sx={{ fontSize: 13, color: isRequester ? tokens.dangerFill : tokens.inkSecondary }}>
                           {isRequester ? "Auteur de la demande - ne peut pas en être chargé" : e.position}
                         </Typography>
                       </Box>
@@ -618,10 +665,10 @@ export function RequestDetailPage() {
               {/* Le document final se dépose ici, dans les actions : il n'est
                   plus une simple pièce du dossier, il est l'acte de validation. */}
               <Box>
-                <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#1B4F72' }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.brand }}>
                   Document traité et signé
                 </Typography>
-                <Typography sx={{ fontSize: 11.5, color: '#5D6D7E', mt: 0.3, mb: 1.2 }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: 0.3, mb: 1.2 }}>
                   Téléchargez le dossier, traitez-le hors application, puis déposez ici le document validé et signé.
                   Il est obligatoire pour valider, et c'est celui que l'agent demandeur recevra.
                 </Typography>
@@ -633,7 +680,7 @@ export function RequestDetailPage() {
                           href={attachmentDownloadUrl(request.id, a.id)}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ fontSize: 13, color: '#2E86C1' }}
+                          style={{ fontSize: 14, color: tokens.accentFill }}
                         >
                           {a.originalName} ({Math.round(a.size / 1024)} Ko)
                         </a>
@@ -671,7 +718,7 @@ export function RequestDetailPage() {
                 {uploadMutation.isPending && (
                   <Box sx={{ maxWidth: 320, mt: 1 }}>
                     <LinearProgress variant="determinate" value={uploadProgress ?? 0} />
-                    <Typography sx={{ fontSize: 11, color: '#5D6D7E', mt: 0.5 }}>
+                    <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, mt: 0.5 }}>
                       Téléchargement… {uploadProgress ?? 0}%
                     </Typography>
                   </Box>
@@ -701,7 +748,7 @@ export function RequestDetailPage() {
                   color="success"
                   startIcon={<CheckCircleIcon />}
                   disabled={!hasTreatedDocument || decisionMutation.isPending}
-                  onClick={() => decisionMutation.mutate({ decision: 'APPROVED' })}
+                  onClick={() => setConfirmAction('sdag-approve')}
                 >
                   Valider
                 </Button>
@@ -721,15 +768,21 @@ export function RequestDetailPage() {
       )}
 
       <Paper sx={{ p: 3, borderRadius: 2 }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72', mb: 2 }}>Historique</Typography>
+        <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand, mb: 2 }}>Historique</Typography>
         <Stack spacing={1.5} divider={<Divider />}>
           {request.statusHistory.map((h) => (
             <Box key={h.id}>
-              <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>{formatDateTime(h.createdAt)}</Typography>
-              <Typography sx={{ fontSize: 13 }}>
-                {h.fromStatus ? `${h.fromStatus} → ${h.toStatus}` : `Création (${h.toStatus})`}
+              <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>{formatDateTime(h.createdAt)}</Typography>
+              {/* Libellés en clair : l'historique affichait les codes bruts
+                  de l'énumération (« PENDING_MANAGER_REVIEW →
+                  PENDING_ASSIGNMENT »), illisibles pour un agent, alors que la
+                  table de libellés existe et est déjà importée ici. */}
+              <Typography sx={{ fontSize: 14 }}>
+                {h.fromStatus
+                  ? `${REQUEST_STATUS_LABELS[h.fromStatus] ?? h.fromStatus} → ${REQUEST_STATUS_LABELS[h.toStatus] ?? h.toStatus}`
+                  : `Création (${REQUEST_STATUS_LABELS[h.toStatus] ?? h.toStatus})`}
               </Typography>
-              {h.comment && <Typography sx={{ fontSize: 12, color: '#5D6D7E' }}>« {h.comment} »</Typography>}
+              {h.comment && <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>« {h.comment} »</Typography>}
             </Box>
           ))}
         </Stack>
@@ -747,6 +800,15 @@ export function RequestDetailPage() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             sx={{ mt: 1 }}
+            error={comment.length > 0 && comment.trim().length < 10}
+            // L'API exige 10 caractères : la chaîne vide passait, donc un refus
+            // sans explication. La règle est annoncée ici plutôt que découverte
+            // au moment de l'envoi.
+            helperText={
+              comment.trim().length < 10
+                ? 'Au moins 10 caractères. Ce motif est transmis tel quel à l’agent.'
+                : 'Ce motif est transmis tel quel à l’agent.'
+            }
           />
         </DialogContent>
         <DialogActions>
@@ -754,7 +816,9 @@ export function RequestDetailPage() {
           <Button
             variant="contained"
             color="error"
-            disabled={!comment.trim() || managerReviewMutation.isPending || decisionMutation.isPending}
+            disabled={
+              comment.trim().length < 10 || managerReviewMutation.isPending || decisionMutation.isPending
+            }
             onClick={() => {
               if (rejectDialog === 'manager') {
                 managerReviewMutation.mutate({ decision: 'DEFAVORABLE', comment });
@@ -764,6 +828,81 @@ export function RequestDetailPage() {
             }}
           >
             Confirmer le rejet
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation des décisions engageantes. Elles n'en avaient aucune,
+          alors que les suppressions administratives étaient déjà gardées. */}
+      <ConfirmDialog
+        open={confirmAction === 'manager-favorable'}
+        danger={false}
+        title="Donner un avis favorable ?"
+        description={
+          `La demande de ${request.employee.firstName} ${request.employee.lastName} poursuivra son parcours : ` +
+          "soit vers le niveau hiérarchique suivant, soit vers la SDAG. L'agent et la SDAG en sont informés. " +
+          "Revenir sur cet avis demandera l'intervention du Sous-Directeur SDAG."
+        }
+        confirmLabel="Donner un avis favorable"
+        loading={managerReviewMutation.isPending}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null);
+          managerReviewMutation.mutate({ decision: 'FAVORABLE' });
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmAction === 'sdag-approve'}
+        danger={false}
+        title="Valider définitivement ce dossier ?"
+        description={
+          `Le congé de ${request.employee.firstName} ${request.employee.lastName} sera accordé. ` +
+          "Les jours correspondants sont décomptés de son solde, le document signé lui est remis, " +
+          "et sa hiérarchie est informée. Seul le Sous-Directeur SDAG peut annuler cette décision ensuite, " +
+          'sur motif consigné.'
+        }
+        confirmLabel="Valider le dossier"
+        loading={decisionMutation.isPending}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null);
+          decisionMutation.mutate({ decision: 'APPROVED' });
+        }}
+      />
+
+      {/* Annulation d'une décision déjà prise. Aucun chemin ne sortait de
+          APPROVED, REJECTED ni MANAGER_REJECTED : une décision par erreur ne
+          se corrigeait qu'en base de données. */}
+      <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Annuler la décision prise sur ce dossier ?</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" role="alert" sx={{ mb: 2 }}>
+            Le dossier repart à l'étape qui précède sa décision. Les jours de congé suivent le
+            mouvement en sens inverse. L'agent et l'agent de traitement en sont informés, et le
+            motif que vous saisissez figure dans l'historique du dossier.
+          </Alert>
+          <TextField
+            autoFocus
+            label="Motif de l'annulation (obligatoire)"
+            multiline
+            minRows={3}
+            fullWidth
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            error={cancelReason.length > 0 && cancelReason.trim().length < 10}
+            helperText="Au moins 10 caractères."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelOpen(false)}>Fermer</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={cancelReason.trim().length < 10 || cancelMutation.isPending}
+            onClick={() => cancelMutation.mutate(cancelReason)}
+          >
+            {cancelMutation.isPending ? 'Annulation…' : "Annuler la décision"}
           </Button>
         </DialogActions>
       </Dialog>

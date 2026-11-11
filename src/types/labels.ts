@@ -27,9 +27,11 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   MANAGER_REJECTED: 'Avis défavorable',
   PENDING_ASSIGNMENT: 'En attente de cotation',
   ASSIGNED: 'En cours de traitement',
-  // Plus atteignable : l'agent de traitement décide désormais lui-même.
-  // Conservé pour les dossiers passés par l'ancien circuit.
+  // Plus atteignables : l'agent de traitement décide désormais lui-même.
+  // Conservés pour les dossiers passés par l'ancien circuit, qui les portent
+  // encore et dont l'historique doit rester lisible.
   RETURNED_TO_SDAG_DIRECTOR: 'En attente de décision (ancien circuit)',
+  UNDER_REVIEW: "En cours d'étude (ancien circuit)",
   APPROVED: 'Signée',
   REJECTED: 'Rejetée',
 };
@@ -41,6 +43,7 @@ export const REQUEST_STATUS_COLORS: Record<RequestStatus, 'default' | 'info' | '
   PENDING_ASSIGNMENT: 'secondary',
   ASSIGNED: 'secondary',
   RETURNED_TO_SDAG_DIRECTOR: 'warning',
+  UNDER_REVIEW: 'secondary',
   APPROVED: 'success',
   REJECTED: 'error',
 };

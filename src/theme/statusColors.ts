@@ -1,4 +1,5 @@
 import type { AuthUser, LeaveRequest, RequestStatus } from '../types/api';
+import { tokens } from './tokens';
 
 // ---------------------------------------------------------------------------
 // Système de couleurs de l'application, appliqué partout : badges, listes,
@@ -17,12 +18,20 @@ import type { AuthUser, LeaveRequest, RequestStatus } from '../types/api';
 
 export type Tone = 'neutral' | 'progress' | 'action' | 'success' | 'danger';
 
+// Teintes dérivées des jetons, et non d'une seconde palette : il y avait ici
+// quinze valeurs écrites en dur, en parallèle de theme/tokens.ts, ce qui rendait
+// toute correction de contraste incomplète par construction.
+//
+//   `text` sur `soft` porte l'information et respecte le seuil AA de 4,5:1
+//          (mesuré : 4,8 à 7,9 selon la teinte) ;
+//   `main` n'est utilisé qu'en bordure à 20 % d'opacité — décoratif, le sens
+//          étant déjà porté par le libellé du badge.
 export const TONE_COLORS: Record<Tone, { main: string; soft: string; text: string }> = {
-  neutral: { main: '#9AA7B4', soft: '#F2F4F7', text: '#5D6D7E' },
-  progress: { main: '#2E86C1', soft: '#EBF5FB', text: '#1B4F72' },
-  action: { main: '#E08A1E', soft: '#FDF3E3', text: '#9C5B00' },
-  success: { main: '#2E9E6B', soft: '#E9F7F0', text: '#1E6B48' },
-  danger: { main: '#C0392B', soft: '#FDEDEC', text: '#922B21' },
+  neutral: { main: tokens.inkMuted, soft: tokens.surfaceSunk, text: tokens.inkSecondary },
+  progress: { main: tokens.accentFill, soft: tokens.infoSoft, text: tokens.brand },
+  action: { main: tokens.warningFill, soft: tokens.warningSoft, text: tokens.warningText },
+  success: { main: tokens.successFill, soft: tokens.successSoft, text: tokens.successText },
+  danger: { main: tokens.dangerFill, soft: tokens.dangerSoft, text: tokens.dangerText },
 };
 
 // Teinte intrinsèque d'un statut, indépendamment de qui regarde.

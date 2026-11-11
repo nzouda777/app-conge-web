@@ -26,6 +26,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
+  PURGE_CONFIRMATION_PHRASE,
   deleteAdminAttachment,
   deleteAdminRequest,
   listAdminRequests,
@@ -33,7 +34,8 @@ import {
 } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { StepUpDialog } from '../../components/StepUpDialog';
+import { tokens } from '../../theme/tokens';
 import { REQUEST_TYPE_LABELS, formatDate } from '../../types/labels';
 import type { LeaveRequest } from '../../types/api';
 
@@ -54,35 +56,46 @@ export function AdminRequestsPage() {
     queryClient.invalidateQueries({ queryKey: ['admin', 'requests'] });
   }
 
+  // Les deux actions destructives exigent désormais le mot de passe de
+  // l'administrateur, redemandé au moment de l'acte (StepUpDialog). L'erreur
+  // est affichée DANS la boîte, pour qu'un mot de passe mal saisi se corrige
+  // sans tout recommencer.
+  const [stepUpError, setStepUpError] = useState<string | null>(null);
+
   const deleteRequestMutation = useMutation({
-    mutationFn: (id: string) => deleteAdminRequest(id),
+    mutationFn: ({ id, password }: { id: string; password: string }) => deleteAdminRequest(id, password),
     onSuccess: () => {
       invalidate();
       setDeleteRequestTarget(null);
       setManageRequest(null);
+      setStepUpError(null);
     },
-    onError: (e) => setError(getApiErrorMessage(e, 'Impossible de supprimer cette demande.')),
+    onError: (e) => setStepUpError(getApiErrorMessage(e, 'Impossible de supprimer cette demande.')),
   });
 
   const purgeMutation = useMutation({
-    mutationFn: () => purgeAllRequests(),
+    mutationFn: (password: string) => purgeAllRequests(password),
     onSuccess: (res) => {
       invalidate();
       setPurgeOpen(false);
+      setStepUpError(null);
       setPurgeResult(
         `${res.deletedRequests} demande(s) et ${res.deletedAttachments} pièce(s) jointe(s) supprimées.`,
       );
     },
-    onError: (e) => setError(getApiErrorMessage(e, 'Impossible de vider la mémoire des demandes.')),
+    onError: (e) => setStepUpError(getApiErrorMessage(e, 'Impossible de vider la mémoire des demandes.')),
   });
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box>
-          <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72' }}>Demandes</Typography>
-          <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
-            Consulter, supprimer une demande ou ses pièces jointes.
+          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 600, color: tokens.brand }}>
+            Demandes
+          </Typography>
+          <Typography sx={{ color: tokens.inkSecondary }}>
+            Consulter, supprimer une demande ou ses pièces jointes. Chaque suppression est
+            journalisée et rend à l'agent les jours de congé que la demande réservait.
           </Typography>
         </Box>
         <Button variant="outlined" color="error" startIcon={<DeleteForeverIcon />} onClick={() => setPurgeOpen(true)}>
@@ -91,17 +104,17 @@ export function AdminRequestsPage() {
       </Box>
 
       {listError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }}>
           {getApiErrorMessage(listError, 'Impossible de charger les demandes.')}
         </Alert>
       )}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" role="alert" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       {purgeResult && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setPurgeResult(null)}>
+        <Alert severity="success" role="status" sx={{ mb: 2 }} onClose={() => setPurgeResult(null)}>
           {purgeResult}
         </Alert>
       )}
@@ -127,18 +140,18 @@ export function AdminRequestsPage() {
             )}
             {data?.items.map((r) => (
               <TableRow key={r.id} hover>
-                <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{r.reference ?? '(brouillon)'}</TableCell>
-                <TableCell sx={{ fontSize: 12 }}>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>{r.reference ?? '(brouillon)'}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}>
                   {r.employee.firstName} {r.employee.lastName}
                 </TableCell>
-                <TableCell sx={{ fontSize: 12 }}>{REQUEST_TYPE_LABELS[r.type]}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}>{REQUEST_TYPE_LABELS[r.type]}</TableCell>
                 <TableCell>
                   <StatusBadge status={r.status} />
                 </TableCell>
-                <TableCell sx={{ fontSize: 11 }}>
+                <TableCell sx={{ fontSize: 13 }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}
                 </TableCell>
-                <TableCell sx={{ fontSize: 12 }}>{r.attachments.length}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}>{r.attachments.length}</TableCell>
                 <TableCell align="right">
                   <Tooltip title="Voir la fiche">
                     <IconButton size="small" component={RouterLink} to={`/requests/${r.id}`}>
@@ -160,7 +173,7 @@ export function AdminRequestsPage() {
             ))}
             {data?.items.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={7} sx={{ color: '#5D6D7E', fontSize: 13 }}>
+                <TableCell colSpan={7} sx={{ color: tokens.inkSecondary, fontSize: 14 }}>
                   Aucune demande.
                 </TableCell>
               </TableRow>
@@ -178,28 +191,41 @@ export function AdminRequestsPage() {
         />
       )}
 
-      <ConfirmDialog
+      <StepUpDialog
         open={!!deleteRequestTarget}
         title="Supprimer cette demande ?"
         description={
           deleteRequestTarget
-            ? `La demande ${deleteRequestTarget.reference ?? '(brouillon)'} de ${deleteRequestTarget.employee.firstName} ${deleteRequestTarget.employee.lastName} sera définitivement supprimée, avec tout son historique et ses pièces jointes (fichiers compris). Cette action est irréversible.`
+            ? `La demande ${deleteRequestTarget.reference ?? '(brouillon)'} de ${deleteRequestTarget.employee.firstName} ${deleteRequestTarget.employee.lastName} sera supprimée, avec son historique et ses pièces jointes.`
             : ''
         }
+        consequence="Sans retour possible. Les jours de congé que cette demande réservait sont rendus à l'agent, et la suppression est consignée au journal d'audit."
         confirmLabel="Supprimer"
         loading={deleteRequestMutation.isPending}
-        onCancel={() => setDeleteRequestTarget(null)}
-        onConfirm={() => deleteRequestTarget && deleteRequestMutation.mutate(deleteRequestTarget.id)}
+        error={stepUpError}
+        onCancel={() => {
+          setDeleteRequestTarget(null);
+          setStepUpError(null);
+        }}
+        onConfirm={(password) =>
+          deleteRequestTarget && deleteRequestMutation.mutate({ id: deleteRequestTarget.id, password })
+        }
       />
 
-      <ConfirmDialog
+      <StepUpDialog
         open={purgeOpen}
         title="Vider la mémoire des demandes ?"
-        description="Toutes les demandes, leur historique et toutes les pièces jointes (fichiers compris) seront supprimés définitivement, pour tous les agents. Les employés et les comptes de connexion ne sont pas touchés. Cette action est irréversible."
+        description="Toutes les demandes de tous les agents, leur historique de décision et toutes les pièces jointes seront supprimés. Les agents, les comptes et l'organigramme ne sont pas touchés."
+        consequence="Cette opération efface la trace horodatée de chaque décision de congé de la Direction. Elle est sans retour : assurez-vous qu'une sauvegarde de la base a été prise aujourd'hui. Les numéros de référence déjà émis ne seront pas réattribués."
         confirmLabel="Tout supprimer"
+        requiredPhrase={PURGE_CONFIRMATION_PHRASE}
         loading={purgeMutation.isPending}
-        onCancel={() => setPurgeOpen(false)}
-        onConfirm={() => purgeMutation.mutate()}
+        error={stepUpError}
+        onCancel={() => {
+          setPurgeOpen(false);
+          setStepUpError(null);
+        }}
+        onConfirm={(password) => purgeMutation.mutate(password)}
       />
     </Box>
   );
@@ -216,16 +242,22 @@ function ManageAttachmentsDialog({
   onChanged: () => void;
   onDeleteRequest: () => void;
 }) {
-  const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState(request.attachments);
+  // Supprimer une pièce jointe détruit un document signé : l'action passe,
+  // elle aussi, par une ré-authentification.
+  const [attachmentTarget, setAttachmentTarget] = useState<{ id: string; name: string } | null>(null);
+  const [stepUpError, setStepUpError] = useState<string | null>(null);
 
   const deleteAttachmentMutation = useMutation({
-    mutationFn: (attachmentId: string) => deleteAdminAttachment(request.id, attachmentId),
-    onSuccess: (_, attachmentId) => {
+    mutationFn: ({ attachmentId, password }: { attachmentId: string; password: string }) =>
+      deleteAdminAttachment(request.id, attachmentId, password),
+    onSuccess: (_, { attachmentId }) => {
       setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      setAttachmentTarget(null);
+      setStepUpError(null);
       onChanged();
     },
-    onError: (e) => setError(getApiErrorMessage(e, "Impossible de supprimer cette pièce jointe.")),
+    onError: (e) => setStepUpError(getApiErrorMessage(e, 'Impossible de supprimer cette pièce jointe.')),
   });
 
   return (
@@ -235,20 +267,22 @@ function ManageAttachmentsDialog({
       </DialogTitle>
       <DialogContent>
         <Stack spacing={1.5} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
           {attachments.length === 0 && (
-            <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>Aucune pièce jointe sur cette demande.</Typography>
+            <Typography sx={{ color: tokens.inkSecondary }}>
+              Aucune pièce jointe sur cette demande.
+            </Typography>
           )}
           {attachments.map((a) => (
             <Box key={a.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography sx={{ fontSize: 13 }}>
+              <Typography sx={{ fontSize: 14 }}>
                 {a.originalName} ({Math.round(a.size / 1024)} Ko)
               </Typography>
               <IconButton
                 size="small"
                 color="error"
+                aria-label={`Supprimer la pièce ${a.originalName}`}
                 disabled={deleteAttachmentMutation.isPending}
-                onClick={() => deleteAttachmentMutation.mutate(a.id)}
+                onClick={() => setAttachmentTarget({ id: a.id, name: a.originalName })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -262,6 +296,28 @@ function ManageAttachmentsDialog({
         </Button>
         <Button onClick={onClose}>Fermer</Button>
       </DialogActions>
+
+      <StepUpDialog
+        open={!!attachmentTarget}
+        title="Supprimer cette pièce jointe ?"
+        description={
+          attachmentTarget
+            ? `Le fichier « ${attachmentTarget.name} » sera supprimé de la demande et effacé du serveur.`
+            : ''
+        }
+        consequence="S'il s'agit du document signé remis à l'agent, celui-ci ne pourra plus le télécharger."
+        confirmLabel="Supprimer la pièce"
+        loading={deleteAttachmentMutation.isPending}
+        error={stepUpError}
+        onCancel={() => {
+          setAttachmentTarget(null);
+          setStepUpError(null);
+        }}
+        onConfirm={(password) =>
+          attachmentTarget &&
+          deleteAttachmentMutation.mutate({ attachmentId: attachmentTarget.id, password })
+        }
+      />
     </Dialog>
   );
 }

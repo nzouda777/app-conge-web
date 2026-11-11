@@ -8,6 +8,7 @@ import { expectedReviewerLabel } from '../theme/statusColors';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import type { RequestStatus } from '../types/api';
 import { useAuth } from '../auth/AuthContext';
+import { tokens } from '../theme/tokens';
 
 // Les onglets suivent le parcours du dossier : initié chez la hiérarchie,
 // reçu à la SDAG, coté, puis son issue. « Rejetées » réunit les deux refus -
@@ -35,10 +36,10 @@ export function SdagPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box>
-          <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72' }}>
+          <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand }}>
             SDAG - Réception & Traitement
           </Typography>
-          <Typography sx={{ fontSize: 13, color: '#5D6D7E' }}>
+          <Typography sx={{ fontSize: 14, color: tokens.inkSecondary }}>
             {user?.role === 'AGENT_TRAITEMENT_SDAG'
               ? 'Dossiers qui vous sont affectés'
               : 'Ensemble des dossiers transmis par les responsables hiérarchiques'}
@@ -47,37 +48,37 @@ export function SdagPage() {
       </Box>
 
       <Paper sx={{ borderRadius: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: '1px solid #e8eaed', px: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: `1px solid ${tokens.borderSoft}`, px: 1 }}>
           {TABS.map((t) => (
-            <Tab key={t.label} label={t.label} sx={{ fontSize: 13, textTransform: 'none' }} />
+            <Tab key={t.label} label={t.label} sx={{ fontSize: 14, textTransform: 'none' }} />
           ))}
         </Tabs>
-        <Stack divider={<Box sx={{ borderBottom: '1px solid #f5f6fa' }} />}>
-          {isLoading && <Typography sx={{ p: 2, fontSize: 13 }}>Chargement…</Typography>}
+        <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
+          {isLoading && <Typography sx={{ p: 2, fontSize: 14 }}>Chargement…</Typography>}
           {data?.items.length === 0 && !isLoading && (
-            <Typography sx={{ p: 2, fontSize: 13, color: '#5D6D7E' }}>Aucun dossier dans cette file.</Typography>
+            <Typography sx={{ p: 2, fontSize: 14, color: tokens.inkSecondary }}>Aucun dossier dans cette file.</Typography>
           )}
           {data?.items.map((r) => (
             <Box key={r.id} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
-                  <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>
                     {r.reference}
                   </Typography>
                   <StatusBadge status={r.status} request={r} user={user} />
                 </Box>
-                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 500 }}>
                   {r.employee.firstName} {r.employee.lastName} - {r.employee.organizationUnit?.name} ·{' '}
                   {REQUEST_TYPE_LABELS[r.type]} · {r.calculatedDays} jour(s)
                 </Typography>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}
                   {r.currentAssignee ? ` · Coté à ${r.currentAssignee.firstName} ${r.currentAssignee.lastName}` : ''}
                 </Typography>
                 {/* De qui l'avis est attendu : sans cela, un dossier bloqué ne
                     désigne personne et nul ne sait qui relancer. */}
                 {expectedReviewerLabel(r) && (
-                  <Typography sx={{ fontSize: 11, color: '#9C5B00' }}>
+                  <Typography sx={{ fontSize: 13, color: tokens.warningText }}>
                     En attente de l'avis de : {expectedReviewerLabel(r)}
                   </Typography>
                 )}

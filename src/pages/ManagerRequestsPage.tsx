@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { listRequests } from '../api/requests';
 import { StatusBadge } from '../components/StatusBadge';
 import { REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
+import { tokens } from '../theme/tokens';
 
 export function ManagerRequestsPage() {
   const { user } = useAuth();
@@ -23,32 +24,32 @@ export function ManagerRequestsPage() {
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 20, fontWeight: 600, color: '#1B4F72', mb: 0.5 }}>
+      <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand, mb: 0.5 }}>
         Demandes de mon équipe
       </Typography>
-      <Typography sx={{ fontSize: 13, color: '#5D6D7E', mb: 3 }}>
+      <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mb: 3 }}>
         {pending.length} demande(s) en attente de votre avis
       </Typography>
 
       <Paper sx={{ borderRadius: 2, mb: 3 }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid #f0f1f3' }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>En attente d'avis</Typography>
+        <Box sx={{ p: 2, borderBottom: `1px solid ${tokens.borderSoft}` }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>En attente d'avis</Typography>
         </Box>
-        <Stack divider={<Box sx={{ borderBottom: '1px solid #f5f6fa' }} />}>
-          {isLoading && <Typography sx={{ p: 2, fontSize: 13 }}>Chargement…</Typography>}
+        <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
+          {isLoading && <Typography sx={{ p: 2, fontSize: 14 }}>Chargement…</Typography>}
           {pending.length === 0 && !isLoading && (
-            <Typography sx={{ p: 2, fontSize: 13, color: '#5D6D7E' }}>Aucune demande en attente.</Typography>
+            <Typography sx={{ p: 2, fontSize: 14, color: tokens.inkSecondary }}>Aucune demande en attente.</Typography>
           )}
           {pending.map((r) => (
             <Box key={r.id} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E', fontFamily: 'monospace' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary, fontFamily: 'monospace' }}>
                   {r.reference}
                 </Typography>
-                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 500 }}>
                   {r.employee.firstName} {r.employee.lastName} - {REQUEST_TYPE_LABELS[r.type]}
                 </Typography>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)} · {r.calculatedDays} jour(s)
                 </Typography>
               </Box>
@@ -61,10 +62,10 @@ export function ManagerRequestsPage() {
       </Paper>
 
       <Paper sx={{ borderRadius: 2 }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid #f0f1f3' }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#1B4F72' }}>Historique de l'équipe</Typography>
+        <Box sx={{ p: 2, borderBottom: `1px solid ${tokens.borderSoft}` }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: tokens.brand }}>Historique de l'équipe</Typography>
         </Box>
-        <Stack divider={<Box sx={{ borderBottom: '1px solid #f5f6fa' }} />}>
+        <Stack divider={<Box sx={{ borderBottom: `1px solid ${tokens.appBackground}` }} />}>
           {others.map((r) => (
             <Box
               key={r.id}
@@ -73,10 +74,10 @@ export function ManagerRequestsPage() {
               sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, textDecoration: 'none', color: 'inherit' }}
             >
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontSize: 13 }}>
+                <Typography sx={{ fontSize: 14 }}>
                   {r.employee.firstName} {r.employee.lastName} - {REQUEST_TYPE_LABELS[r.type]}
                 </Typography>
-                <Typography sx={{ fontSize: 11, color: '#5D6D7E' }}>
+                <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                   {formatDate(r.startDate)} → {formatDate(r.endDate)}
                 </Typography>
               </Box>
