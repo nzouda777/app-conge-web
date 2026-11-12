@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Variables d'environnement locales. Ce dépôt est PUBLIC : un fichier .env
+# suivi finit par emporter une vraie valeur le jour où quelqu'un en met une.
+# Le modèle à recopier reste .env.example, qui ne contient aucune valeur.
+.env
+.env.local
+.env.*.local

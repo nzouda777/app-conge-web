@@ -84,7 +84,9 @@ export function LoginPage() {
               autoComplete="username"
               value={matricule}
               onChange={(e) => setMatricule(e.target.value)}
-              placeholder="1149105B"
+              // Matricule fictif : ce dépôt est public, et un matricule réel
+              // affiché ici désigne une personne identifiable.
+              placeholder="1234567A"
             />
             <TextField
               label="Mot de passe"
