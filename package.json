@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:admin": "tsc -b && vite build --mode admin",
+    "build:all": "tsc -b && vite build && vite build --mode admin --base=/admin/ --outDir dist/admin",
     "lint": "oxlint",
     "preview": "vite preview"
   },

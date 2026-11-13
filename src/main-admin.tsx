@@ -44,7 +44,10 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        {/* basename : la console est servie à la racine de son propre domaine
+            (base « / ») ou sous /admin de l'interface du personnel
+            (build:all) ; les routes internes restent identiques. */}
+        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <AuthProvider>
             <Shell />
           </AuthProvider>
