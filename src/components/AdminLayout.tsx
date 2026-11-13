@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -36,6 +37,7 @@ const DRAWER_WIDTH = 236;
 const NAV = [
   { label: 'Utilisateurs', icon: <PeopleIcon />, to: '/utilisateurs' },
   { label: 'Demandes', icon: <ListAltIcon />, to: '/demandes' },
+  { label: 'Nouvelle demande', icon: <AddCircleIcon />, to: '/nouvelle-demande' },
   { label: "Journal d'audit", icon: <HistoryEduIcon />, to: '/journal' },
   { label: 'Décisions ministérielles', icon: <GavelOutlinedIcon />, to: '/decisions' },
   { label: 'Délais de traitement', icon: <TimerOutlinedIcon />, to: '/delais' },

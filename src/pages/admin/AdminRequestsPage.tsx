@@ -24,6 +24,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   PURGE_CONFIRMATION_PHRASE,
@@ -98,9 +99,14 @@ export function AdminRequestsPage() {
             journalisée et rend à l'agent les jours de congé que la demande réservait.
           </Typography>
         </Box>
-        <Button variant="outlined" color="error" startIcon={<DeleteForeverIcon />} onClick={() => setPurgeOpen(true)}>
-          Vider la mémoire des demandes
-        </Button>
+        <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+          <Button component={RouterLink} to="/nouvelle-demande" variant="contained" startIcon={<AddIcon />}>
+            Nouvelle demande
+          </Button>
+          <Button variant="outlined" color="error" startIcon={<DeleteForeverIcon />} onClick={() => setPurgeOpen(true)}>
+            Vider la mémoire des demandes
+          </Button>
+        </Stack>
       </Box>
 
       {listError && (

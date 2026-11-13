@@ -10,6 +10,7 @@ import type {
   LeaveRequest,
   Paginated,
   ProvisionalCredential,
+  QuotaSummary,
   Role,
 } from '../types/api';
 
@@ -207,6 +208,14 @@ export async function reissueProvisionalPasswords(confirmPassword: string) {
 
 export async function deleteAdminUser(id: string, confirmPassword: string) {
   const { data } = await apiClient.delete(`/admin/users/${id}`, { data: { confirmPassword } });
+  return data;
+}
+
+// Solde d'un agent, pour la saisie d'une demande à son compte.
+export async function fetchEmployeeQuota(employeeId: string, year?: number) {
+  const { data } = await apiClient.get<QuotaSummary>(`/admin/employees/${employeeId}/quota`, {
+    params: year ? { year } : {},
+  });
   return data;
 }
 

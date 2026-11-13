@@ -327,7 +327,7 @@ export interface AdminEmployee {
   position: string;
   status: EmployeeStatus;
   organizationUnit: { id: string; name: string; code: string };
-  manager: { id: string; firstName: string; lastName: string } | null;
+  manager: { id: string; firstName: string; lastName: string; position?: string } | null;
   user?: { id: string } | null;
 }
 

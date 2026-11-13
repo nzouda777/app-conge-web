@@ -25,7 +25,7 @@ import { createRequest, deleteAttachment, submitRequest, uploadAttachment, updat
 import { fetchQuotaSummary } from '../api/misc';
 import { listEmployees } from '../api/misc';
 import { getApiErrorMessage } from '../api/client';
-import type { LeaveRequest, PermissionSubType, RequestType } from '../types/api';
+import type { LeaveRequest, PermissionSubType, QuotaSummary, RequestType } from '../types/api';
 import { PERMISSION_SUBTYPE_LABELS, REQUEST_TYPE_LABELS, formatDate } from '../types/labels';
 import { tokens } from '../theme/tokens';
 
@@ -110,7 +110,27 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function NewRequestPage() {
+// Agent pour le compte duquel la demande est saisie (console
+// d'administration). Absent, c'est l'utilisateur connecté qui dépose pour
+// lui-même — le cas de l'interface du personnel.
+export interface OnBehalfOf {
+  id: string;
+  firstName: string;
+  lastName: string;
+  matricule: string;
+  manager: { firstName: string; lastName: string; position?: string } | null;
+  // Solde de CET agent : l'interface du personnel n'expose que le sien, la
+  // console d'administration fournit le point d'accès adéquat.
+  fetchQuota: () => Promise<QuotaSummary>;
+}
+
+interface NewRequestPageProps {
+  onBehalfOf?: OnBehalfOf;
+  // Après soumission. Par défaut, ouverture de la fiche du dossier.
+  onSubmitted?: (request: LeaveRequest) => void;
+}
+
+export function NewRequestPage({ onBehalfOf, onSubmitted }: NewRequestPageProps = {}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -123,7 +143,17 @@ export function NewRequestPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [advancing, setAdvancing] = useState(false);
 
-  const { data: quota } = useQuery({ queryKey: ['quota'], queryFn: () => fetchQuotaSummary() });
+  const { data: quota } = useQuery({
+    queryKey: onBehalfOf ? ['quota', 'employee', onBehalfOf.id] : ['quota'],
+    queryFn: () => (onBehalfOf ? onBehalfOf.fetchQuota() : fetchQuotaSummary()),
+  });
+  // Titulaire de la demande et son supérieur : l'agent choisi en saisie pour
+  // compte, l'utilisateur connecté sinon.
+  const ownerEmployeeId = onBehalfOf?.id ?? user?.employeeId;
+  const ownerManager = onBehalfOf ? onBehalfOf.manager : user?.employee?.manager;
+  const managerLabel = ownerManager
+    ? `${ownerManager.position ? `${ownerManager.position}, ` : ''}${ownerManager.firstName} ${ownerManager.lastName}`
+    : null;
   const {
     control,
     handleSubmit,
@@ -189,7 +219,9 @@ export function NewRequestPage() {
   const onFormNext = handleSubmit(async (values) => {
     setAdvancing(true);
     try {
-      const req = draft ? await updateRequest(draft.id, buildPayload(values)) : await createRequest(buildPayload(values));
+      const req = draft
+        ? await updateRequest(draft.id, buildPayload(values))
+        : await createRequest({ ...buildPayload(values), employeeId: onBehalfOf?.id });
       setDraft(req);
       const quotaError = checkAnnualLeaveQuota(req);
       if (quotaError) {
@@ -214,10 +246,11 @@ export function NewRequestPage() {
 
   const submitMutation = useMutation({
     mutationFn: () => submitRequest(draft!.id),
-    onSuccess: () => {
+    onSuccess: (submitted) => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['quota'] });
-      navigate(`/requests/${draft!.id}`);
+      if (onSubmitted) onSubmitted(submitted ?? draft!);
+      else navigate(`/requests/${draft!.id}`);
     },
     onError: (e) => setError(getApiErrorMessage(e, 'Impossible de soumettre la demande.')),
   });
@@ -245,7 +278,9 @@ export function NewRequestPage() {
   return (
     <Box sx={{ maxWidth: 760 }}>
       <Typography sx={{ fontSize: 20, fontWeight: 600, color: tokens.brand, mb: 0.5 }}>
-        Nouvelle demande
+        {onBehalfOf
+          ? `Nouvelle demande pour ${onBehalfOf.firstName} ${onBehalfOf.lastName} (${onBehalfOf.matricule})`
+          : 'Nouvelle demande'}
       </Typography>
       <Typography sx={{ fontSize: 14, color: tokens.inkSecondary, mb: 3 }}>
         Remplissez le formulaire - les champs marqués * sont obligatoires
@@ -272,11 +307,10 @@ export function NewRequestPage() {
           {activeStep === 0 && (
             <Stack spacing={2}>
               <Typography sx={{ fontSize: 13, color: tokens.brand, bgcolor: tokens.infoSoft, p: 1.5, borderRadius: 1 }}>
-                Votre supérieur hiérarchique :{' '}
+                {onBehalfOf ? "Supérieur hiérarchique de l'agent" : 'Votre supérieur hiérarchique'} :{' '}
                 <strong>
-                  {user?.employee?.manager
-                    ? `${user.employee.manager.position}, ${user.employee.manager.firstName} ${user.employee.manager.lastName}`
-                    : 'non défini - contactez la SDAG'}
+                  {managerLabel ??
+                    (onBehalfOf ? 'non défini - la demande ne pourra pas être soumise' : 'non défini - contactez la SDAG')}
                 </strong>
               </Typography>
               <Controller
@@ -344,7 +378,7 @@ export function NewRequestPage() {
                 // the agent's own file. Dates are filled with today's date
                 // transparently (see the effect above).
                 <Alert severity="info">
-                  Aucune autre information n'est nécessaire. Votre demande sera transmise à votre supérieur
+                  Aucune autre information n'est nécessaire. La demande sera transmise au supérieur
                   hiérarchique, puis à la SDAG.
                 </Alert>
               ) : isReprise ? (
@@ -508,11 +542,16 @@ export function NewRequestPage() {
                       select
                       label="Intérimaire (facultatif)"
                       error={!!errors.interimEmployeeId}
-                      helperText={errors.interimEmployeeId?.message ?? "Qui assure vos fonctions pendant votre absence."}
+                      helperText={
+                        errors.interimEmployeeId?.message ??
+                        (onBehalfOf
+                          ? "Qui assure les fonctions de l'agent pendant son absence."
+                          : 'Qui assure vos fonctions pendant votre absence.')
+                      }
                     >
                       <MenuItem value="">Aucun</MenuItem>
                       {employees?.items
-                        .filter((e) => e.id !== user?.employeeId)
+                        .filter((e) => e.id !== ownerEmployeeId)
                         .map((e) => (
                           <MenuItem key={e.id} value={e.id}>
                             {e.firstName} {e.lastName} - {e.position}
@@ -636,9 +675,7 @@ export function NewRequestPage() {
               )}
               <Typography sx={{ fontSize: 13, color: tokens.inkSecondary }}>
                 Cette demande sera transmise à : <strong>
-                  {user?.employee?.manager
-                    ? `${user.employee.manager.position}, ${user.employee.manager.firstName} ${user.employee.manager.lastName}`
-                    : 'votre responsable hiérarchique'}
+                  {managerLabel ?? (onBehalfOf ? "son responsable hiérarchique" : 'votre responsable hiérarchique')}
                 </strong>{' '}
                 pour avis, avant transmission à la SDAG.
               </Typography>

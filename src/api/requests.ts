@@ -11,6 +11,8 @@ import type {
 } from '../types/api';
 
 export interface CreateRequestInput {
+  // Console d'administration uniquement : saisie pour le compte d'un agent.
+  employeeId?: string;
   type: RequestType;
   permissionSubType?: PermissionSubType;
   startDate: string;
@@ -30,7 +32,7 @@ export async function createRequest(input: CreateRequestInput) {
   return data;
 }
 
-export async function updateRequest(id: string, input: Partial<CreateRequestInput>) {
+export async function updateRequest(id: string, input: Partial<Omit<CreateRequestInput, 'employeeId'>>) {
   const { data } = await apiClient.patch<LeaveRequest>(`/requests/${id}`, input);
   return data;
 }

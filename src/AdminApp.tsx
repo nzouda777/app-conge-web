@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
+import { AdminNewRequestPage } from './pages/admin/AdminNewRequestPage';
 import { AdminDecisionsPage } from './pages/admin/AdminDecisionsPage';
 import { AdminTargetsPage } from './pages/admin/AdminTargetsPage';
 import { AdminAuditPage } from './pages/admin/AdminAuditPage';
@@ -22,6 +23,9 @@ export default function AdminApp() {
       <Route path="/" element={<Navigate to="/utilisateurs" replace />} />
       <Route path="/utilisateurs" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
       <Route path="/demandes" element={<AdminRoute><AdminRequestsPage /></AdminRoute>} />
+      {/* Saisie d'une demande pour le compte d'un agent (agent sans accès,
+          demande remise sur papier). Elle suit ensuite le circuit ordinaire. */}
+      <Route path="/nouvelle-demande" element={<AdminRoute><AdminNewRequestPage /></AdminRoute>} />
       <Route path="/decisions" element={<AdminRoute><AdminDecisionsPage /></AdminRoute>} />
       <Route path="/delais" element={<AdminRoute><AdminTargetsPage /></AdminRoute>} />
       {/* Journal d'audit : consultation seule, par construction — aucun point
