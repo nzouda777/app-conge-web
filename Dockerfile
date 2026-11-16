@@ -1,7 +1,10 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# `--include=dev` explicite : Vite et TypeScript sont des devDependencies. Un
+# NODE_ENV=production injecté comme argument de build par l'hébergeur (Coolify
+# le fait pour les variables du service) les ferait sauter, et le build avec.
+RUN npm ci --include=dev
 COPY . .
 
 # Quelle interface est construite : `agent` (personnel, PWA) ou `admin`
@@ -46,3 +49,9 @@ RUN case "$VITE_API_URL" in       http*) ORIGIN=$(printf '%s' "$VITE_API_URL" | 
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
+
+# Sonde de vivacité : sans elle, l'orchestrateur (Coolify, Compose) bascule le
+# trafic sur un nouveau conteneur sans savoir s'il répond. 127.0.0.1 et non
+# `localhost` : nginx n'écoute qu'en IPv4, et `localhost` peut résoudre en ::1.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO /dev/null http://127.0.0.1/ || exit 1
