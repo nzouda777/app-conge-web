@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 # `--include=dev` explicite : Vite et TypeScript sont des devDependencies. Un
@@ -30,7 +30,7 @@ RUN if [ "$APP_SURFACE" = "admin" ]; then \
       rm -rf dist/icons; \
     fi
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.30-alpine AS runtime
 ARG APP_SURFACE=agent
 ARG VITE_API_URL=/api
 COPY nginx.conf /etc/nginx/conf.d/default.conf
